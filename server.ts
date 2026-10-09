@@ -35,6 +35,8 @@ async function startServer() {
     username: string;
     name: string;
     avatar: string;
+    email?: string;
+    provider?: string;
     coverImage?: string;
     bio: string;
     location?: string;
@@ -53,6 +55,7 @@ async function startServer() {
       id: '1',
       username: 'bellbird_user',
       name: 'BellBird User',
+      email: 'demo@bellbird.app',
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
       coverImage: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200',
       bio: 'Exploring the world one chirp at a time. #technology #minimalism',
@@ -152,10 +155,148 @@ async function startServer() {
 
   // --- API ROUTES ---
 
-  // Auth (Mock)
+  // Auth: Log In
   app.post('/api/auth/login', (req, res) => {
-    // Just return user 1 as the logged in user
-    res.json({ user: users[0], token: 'mock-jwt-token' });
+    const { emailOrUsername, password } = req.body || {};
+    // If empty or demo request
+    if (!emailOrUsername || emailOrUsername === 'demo@bellbird.app' || emailOrUsername === 'bellbird_user') {
+      const demoUser = users.find(u => u.username === 'bellbird_user') || users[0];
+      return res.json({ user: demoUser, token: 'mock-jwt-token' });
+    }
+
+    const clean = String(emailOrUsername).trim().toLowerCase().replace(/^@/, '');
+    const found = users.find(u =>
+      u.username.toLowerCase() === clean ||
+      (u.email && u.email.toLowerCase() === clean)
+    );
+
+    if (found) {
+      return res.json({ user: found, token: 'jwt_' + found.id + '_' + Date.now() });
+    }
+
+    // If no matching user, return helpful error
+    return res.status(401).json({ error: 'No account found with this email or username. Please join or check credentials.' });
+  });
+
+  // Auth: Register (Normal Join)
+  app.post('/api/auth/register', (req, res) => {
+    const { name, username, email, avatar } = req.body || {};
+    if (!name || !String(name).trim()) {
+      return res.status(400).json({ error: 'Full name is required' });
+    }
+
+    const cleanName = String(name).trim();
+    let cleanUsername = (username ? String(username) : cleanName.toLowerCase().replace(/[^a-z0-9_]/g, ''))
+      .replace(/^@/, '')
+      .trim();
+
+    if (!cleanUsername) {
+      cleanUsername = 'flock_' + Math.floor(1000 + Math.random() * 9000);
+    }
+
+    // Ensure username uniqueness
+    if (users.some(u => u.username.toLowerCase() === cleanUsername.toLowerCase())) {
+      cleanUsername = `${cleanUsername}_${Math.floor(10 + Math.random() * 90)}`;
+    }
+
+    const defaultAvatars = [
+      'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+      'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150',
+      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+      'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150',
+    ];
+    const pickedAvatar = avatar || defaultAvatars[Math.floor(Math.random() * defaultAvatars.length)];
+
+    const newUser: User = {
+      id: 'u_' + Date.now(),
+      name: cleanName,
+      username: cleanUsername,
+      email: email ? String(email).trim() : `${cleanUsername}@bellbird.app`,
+      avatar: pickedAvatar,
+      coverImage: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200',
+      bio: `Joined BellBird! Passionate about sharing thoughts with the flock.`,
+      location: 'Global Flock',
+      website: 'https://bellbird.app',
+      followers: 0,
+      following: 1,
+      isFollowing: false,
+      isPremium: false,
+      provider: 'normal'
+    };
+
+    users.unshift(newUser);
+    res.json({ user: newUser, token: 'jwt_' + newUser.id + '_' + Date.now() });
+  });
+
+  // Auth: OAuth / Provider Sign-in (Google Gmail, LinkedIn, Zoho Mail)
+  app.post('/api/auth/oauth', (req, res) => {
+    const { provider, email, name, avatar } = req.body || {};
+    if (!provider) {
+      return res.status(400).json({ error: 'Provider is required' });
+    }
+
+    const cleanEmail = email ? String(email).trim().toLowerCase() : '';
+
+    // Check if user already exists by email
+    if (cleanEmail) {
+      const existing = users.find(u => u.email && u.email.toLowerCase() === cleanEmail);
+      if (existing) {
+        return res.json({ user: existing, token: 'jwt_' + existing.id + '_' + Date.now() });
+      }
+    }
+
+    let defaultName = name ? String(name).trim() : '';
+    let defaultHandle = '';
+    let defaultAvatar = avatar || '';
+    let defaultBio = '';
+
+    if (provider === 'google') {
+      defaultName = defaultName || (cleanEmail ? cleanEmail.split('@')[0].replace(/[\._]/g, ' ') : 'Google Member');
+      defaultHandle = (cleanEmail ? cleanEmail.split('@')[0] : 'google_user').replace(/[^a-z0-9_]/g, '_');
+      defaultAvatar = defaultAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150';
+      defaultBio = 'Signed in with Google Gmail. Connected to BellBird.';
+    } else if (provider === 'linkedin') {
+      defaultName = defaultName || (cleanEmail ? cleanEmail.split('@')[0].replace(/[\._]/g, ' ') : 'LinkedIn Professional');
+      defaultHandle = (cleanEmail ? cleanEmail.split('@')[0] : 'linkedin_pro').replace(/[^a-z0-9_]/g, '_');
+      defaultAvatar = defaultAvatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150';
+      defaultBio = 'Professional networking on BellBird via LinkedIn.';
+    } else if (provider === 'zoho') {
+      defaultName = defaultName || (cleanEmail ? cleanEmail.split('@')[0].replace(/[\._]/g, ' ') : 'Zoho Workspace Member');
+      defaultHandle = (cleanEmail ? cleanEmail.split('@')[0] : 'zoho_user').replace(/[^a-z0-9_]/g, '_');
+      defaultAvatar = defaultAvatar || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150';
+      defaultBio = 'Zoho Mail user active on BellBird.';
+    } else {
+      defaultName = defaultName || 'BellBird Member';
+      defaultHandle = 'flock_' + Math.floor(Math.random() * 10000);
+      defaultAvatar = defaultAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150';
+      defaultBio = 'Exploring the BellBird feed.';
+    }
+
+    if (users.some(u => u.username.toLowerCase() === defaultHandle.toLowerCase())) {
+      defaultHandle = `${defaultHandle}_${Math.floor(10 + Math.random() * 90)}`;
+    }
+
+    const domain = provider === 'google' ? 'gmail.com' : provider === 'zoho' ? 'zohomail.com' : 'linkedin.com';
+    const oauthUser: User = {
+      id: 'u_' + provider + '_' + Date.now(),
+      name: defaultName,
+      username: defaultHandle,
+      email: cleanEmail || `${defaultHandle}@${domain}`,
+      avatar: defaultAvatar,
+      coverImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200',
+      bio: defaultBio,
+      location: 'Global',
+      website: 'https://bellbird.app',
+      followers: 14,
+      following: 6,
+      isFollowing: false,
+      isPremium: false,
+      provider: String(provider)
+    };
+
+    users.unshift(oauthUser);
+    res.json({ user: oauthUser, token: 'jwt_' + oauthUser.id + '_' + Date.now() });
   });
 
   // Users

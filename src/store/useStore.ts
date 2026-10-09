@@ -5,6 +5,8 @@ interface User {
   username: string;
   name: string;
   avatar: string;
+  email?: string;
+  provider?: string;
   coverImage?: string;
   bio: string;
   location?: string;
@@ -19,6 +21,23 @@ interface User {
   reducedMotion?: boolean;
   fontSize?: 'small' | 'medium' | 'large';
 }
+
+const getStoredUser = (): User | null => {
+  try {
+    const raw = localStorage.getItem('bellbird_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const getStoredToken = (): string | null => {
+  try {
+    return localStorage.getItem('bellbird_token');
+  } catch {
+    return null;
+  }
+};
 
 interface AuthState {
   user: User | null;
@@ -37,17 +56,41 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null, // Will start as null, requires login
-  token: null,
+  user: getStoredUser(),
+  token: getStoredToken(),
   isComposeOpen: false,
   newPostCount: 0,
   bookmarks: ['101', '103'], // Pre-seeded with favorites
-  login: (user, token) => set({ user, token }),
-  logout: () => set({ user: null, token: null, isComposeOpen: false }),
+  login: (user, token) => {
+    try {
+      localStorage.setItem('bellbird_user', JSON.stringify(user));
+      localStorage.setItem('bellbird_token', token);
+    } catch (e) {
+      console.error(e);
+    }
+    set({ user, token });
+  },
+  logout: () => {
+    try {
+      localStorage.removeItem('bellbird_user');
+      localStorage.removeItem('bellbird_token');
+    } catch (e) {
+      console.error(e);
+    }
+    set({ user: null, token: null, isComposeOpen: false });
+  },
   updateUser: (fields) =>
-    set((state) => ({
-      user: state.user ? { ...state.user, ...fields } : null,
-    })),
+    set((state) => {
+      const updated = state.user ? { ...state.user, ...fields } : null;
+      if (updated) {
+        try {
+          localStorage.setItem('bellbird_user', JSON.stringify(updated));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      return { user: updated };
+    }),
   openCompose: () => set({ isComposeOpen: true }),
   closeCompose: () => set({ isComposeOpen: false }),
   triggerFeedRefresh: () => set((state) => ({ newPostCount: state.newPostCount + 1 })),

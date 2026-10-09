@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Heart, UserPlus, Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import TranslationHeaderWidget from '../components/TranslationHeaderWidget';
 import clsx from 'clsx';
 
 export default function Notifications() {
@@ -29,8 +30,9 @@ export default function Notifications() {
 
   return (
     <div className="w-full bg-white pb-20 min-h-screen">
-      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-gray-100 p-4">
+      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-gray-100 p-4 flex items-center justify-between">
         <h1 className="text-xl font-bold text-[#0A192F]">Notifications</h1>
+        <TranslationHeaderWidget />
       </div>
 
       {loading ? (

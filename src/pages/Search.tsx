@@ -2,6 +2,7 @@ import React, { useEffect, useState, useTransition } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Search as SearchIcon, X, TrendingUp, Sparkles, UserPlus, Check, Image as ImageIcon, Flame } from 'lucide-react';
 import PostCard, { Post } from '../components/PostCard';
+import TranslationHeaderWidget from '../components/TranslationHeaderWidget';
 import clsx from 'clsx';
 
 interface UserItem {
@@ -166,29 +167,33 @@ export default function Search() {
     <div className="w-full bg-white pb-24 min-h-screen">
       {/* Search Header Bar (Sticky Top) */}
       <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-gray-100 px-4 py-3">
-        <form onSubmit={handleSearchSubmit} className="relative flex items-center">
-          <div className="absolute left-3.5 text-gray-400 pointer-events-none flex items-center justify-center">
-            <SearchIcon size={18} />
-          </div>
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search BellBird (posts, #hashtags, @people)..."
-            aria-label="Search all content"
-            className="w-full pl-10 pr-10 py-2.5 bg-gray-100 hover:bg-gray-100/80 focus:bg-white border border-transparent focus:border-[#1769FF] rounded-full text-[15px] text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all"
-          />
-          {hasQuery && (
-            <button
-              type="button"
-              onClick={handleClearQuery}
-              aria-label="Clear search input"
-              className="absolute right-3 p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-colors"
-            >
-              <X size={16} />
-            </button>
-          )}
-        </form>
+        <div className="flex items-center gap-2">
+          <form onSubmit={handleSearchSubmit} className="relative flex-1 flex items-center">
+            <div className="absolute left-3.5 text-gray-400 pointer-events-none flex items-center justify-center">
+              <SearchIcon size={18} />
+            </div>
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search BellBird (posts, #hashtags, @people)..."
+              aria-label="Search all content"
+              className="w-full pl-10 pr-10 py-2.5 bg-gray-100 hover:bg-gray-100/80 focus:bg-white border border-transparent focus:border-[#1769FF] rounded-full text-[15px] text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all"
+            />
+            {hasQuery && (
+              <button
+                type="button"
+                onClick={handleClearQuery}
+                aria-label="Clear search input"
+                className="absolute right-3 p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </form>
+
+          <TranslationHeaderWidget />
+        </div>
 
         {/* Tabbed Navigation Filters (Twitter-style: Top, Latest, People, Media) */}
         {hasQuery && (

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useAuthStore } from '../store/useStore';
 import PostCard, { Post } from '../components/PostCard';
 import PromotedAdCard, { PromotedAd, PROMOTED_ADS_DATABASE } from '../components/PromotedAdCard';
+import TranslationHeaderWidget from '../components/TranslationHeaderWidget';
 import { Bird, ArrowDown, RotateCcw, Check, Bookmark } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import clsx from 'clsx';
@@ -197,14 +198,50 @@ export default function Feed() {
       onMouseLeave={handleMouseUp}
       className="w-full bg-white pb-24 relative select-none"
     >
-      {/* Sticky Top Header without "Home" title, with Logo in Top Right Corner */}
-      <div className="sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-gray-100 p-3 px-4 flex items-center justify-between min-h-[52px]">
-        <div className="flex items-center gap-2">
-          {/* Mobile Quick Bookmarks Icon */}
+      {/* Sticky Top Header with Centered Logo (Twitter / X pattern) */}
+      <div className="sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-gray-100 p-2.5 px-4 flex items-center justify-between min-h-[53px] relative">
+        {/* Left Side: Mobile User Avatar / Refresh Status */}
+        <div className="flex items-center gap-2 z-10 min-w-[40px]">
+          <Link
+            to={`/profile/${user?.id || ''}`}
+            className="md:hidden flex items-center"
+            aria-label="View Profile"
+          >
+            <img
+              src={user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
+              alt={user?.name || 'Profile'}
+              className="w-8 h-8 rounded-full object-cover ring-1 ring-gray-200 hover:opacity-90 transition-opacity"
+            />
+          </Link>
+
+          {justRefreshed && (
+            <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full animate-in fade-in duration-150">
+              <Check size={12} /> Updated
+            </span>
+          )}
+        </div>
+
+        {/* Center: BellBird Logo (Dead Center) */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-auto">
+          <Link
+            to="/"
+            aria-label="BellBird Home"
+            className="flex items-center justify-center text-[#1769FF] hover:scale-105 active:scale-95 transition-all p-1 rounded-full hover:bg-blue-50/70"
+          >
+            <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center ring-1 ring-blue-100 shadow-xs">
+              <Bird size={20} className="text-[#1769FF]" />
+            </div>
+          </Link>
+        </div>
+
+        {/* Right Side: Translation Widget & Quick Bookmarks Button */}
+        <div className="flex items-center justify-end gap-1.5 z-10 min-w-[70px]">
+          <TranslationHeaderWidget />
+
           <Link
             to="/bookmarks"
             aria-label="View saved bookmarks"
-            className="md:hidden p-1.5 -ml-1 text-gray-600 hover:text-[#1769FF] hover:bg-blue-50 rounded-full transition-colors flex items-center gap-1 group"
+            className="p-1.5 text-gray-600 hover:text-[#1769FF] hover:bg-blue-50 rounded-full transition-colors flex items-center gap-1 group relative min-h-[36px] min-w-[36px] justify-center"
             title="Bookmarks"
           >
             <Bookmark size={20} className="group-hover:scale-105 transition-transform" />
@@ -214,24 +251,7 @@ export default function Feed() {
               </span>
             )}
           </Link>
-
-          {justRefreshed && (
-            <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full animate-in fade-in duration-150">
-              <Check size={12} /> Updated
-            </span>
-          )}
         </div>
-
-        {/* BellBird Logo in Top Right Corner */}
-        <Link
-          to="/"
-          aria-label="BellBird Home"
-          className="flex items-center gap-2 text-[#1769FF] hover:opacity-85 transition-opacity"
-        >
-          <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center ring-1 ring-blue-100 shadow-xs">
-            <Bird size={20} className="text-[#1769FF]" />
-          </div>
-        </Link>
       </div>
 
       {/* Pull-To-Refresh Indicator Bubble */}

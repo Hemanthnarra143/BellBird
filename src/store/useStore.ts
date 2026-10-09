@@ -5,7 +5,10 @@ interface User {
   username: string;
   name: string;
   avatar: string;
+  coverImage?: string;
   bio: string;
+  location?: string;
+  website?: string;
   followers: number;
   following: number;
   isPremium?: boolean;

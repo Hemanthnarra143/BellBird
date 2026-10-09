@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/useStore';
 import PostCard, { Post } from '../components/PostCard';
+import TranslationHeaderWidget from '../components/TranslationHeaderWidget';
 import { Bookmark, Trash2, ArrowLeft, Search, Sparkles } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -92,17 +93,21 @@ export default function Bookmarks() {
           </div>
         </div>
 
-        {bookmarkedPosts.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setShowClearConfirm(true)}
-            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors flex items-center gap-1.5 text-xs font-semibold"
-            aria-label="Clear all bookmarks"
-          >
-            <Trash2 size={16} />
-            <span className="hidden sm:inline">Clear all</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <TranslationHeaderWidget />
+
+          {bookmarkedPosts.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowClearConfirm(true)}
+              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors flex items-center gap-1.5 text-xs font-semibold min-h-[36px] min-w-[36px] justify-center"
+              aria-label="Clear all bookmarks"
+            >
+              <Trash2 size={16} />
+              <span className="hidden sm:inline">Clear all</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Clear Confirmation Banner */}

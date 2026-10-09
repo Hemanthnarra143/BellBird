@@ -1,8 +1,27 @@
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import cors from 'cors';
+import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
+import { GoogleGenAI } from '@google/genai';
 
-const PORT = 3000;
+dotenv.config();
+
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+
+// Shared server-side Gemini client for BellBird Real-time Translation
+let ai: GoogleGenAI | null = null;
+if (process.env.GEMINI_API_KEY) {
+  ai = new GoogleGenAI({
+    apiKey: process.env.GEMINI_API_KEY,
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
+      },
+    },
+  });
+}
 
 async function startServer() {
   const app = express();
@@ -11,17 +30,91 @@ async function startServer() {
   app.use(express.json());
 
   // --- MOCK DATABASE ---
-  interface User { id: string; username: string; name: string; avatar: string; bio: string; followers: number; following: number; isFollowing?: boolean; }
+  interface User {
+    id: string;
+    username: string;
+    name: string;
+    avatar: string;
+    coverImage?: string;
+    bio: string;
+    location?: string;
+    website?: string;
+    followers: number;
+    following: number;
+    isFollowing?: boolean;
+    isPremium?: boolean;
+  }
   interface Post { id: string; authorId: string; content: string; image: string | null; likes: number; comments: number; createdAt: string; likedBy: string[]; }
   interface Notification { id: string; type: string; actorId: string; postId?: string; read: boolean; createdAt: string; }
   interface Message { id: string; senderId: string; receiverId: string; content: string; createdAt: string; }
 
   let users: User[] = [
-    { id: '1', username: 'bellbird_user', name: 'BellBird User', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', bio: 'Exploring the world one chirp at a time. #technology #minimalism', followers: 120, following: 85, isFollowing: false },
-    { id: '2', username: 'jane_doe', name: 'Jane Doe', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150', bio: 'Photography enthusiast & visual storyteller. Capturing everyday moments. #photography', followers: 245, following: 140, isFollowing: true },
-    { id: '3', username: 'alex_dev', name: 'Alex Rivera', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', bio: 'Frontend engineer building with React, Vite & Tailwind. #webdev #react19', followers: 1820, following: 430, isFollowing: false },
-    { id: '4', username: 'sarah_design', name: 'Sarah Chen', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150', bio: 'Product designer & creative director. Typography, ergonomics, and clean systems. #designsystems', followers: 3100, following: 290, isFollowing: false },
-    { id: '5', username: 'bellbird_hq', name: 'BellBird Official', avatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150', bio: 'The official BellBird account. Welcome to the flock! #bellbird #updates', followers: 15400, following: 18, isFollowing: true },
+    {
+      id: '1',
+      username: 'bellbird_user',
+      name: 'BellBird User',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+      coverImage: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200',
+      bio: 'Exploring the world one chirp at a time. #technology #minimalism',
+      location: 'San Francisco, CA',
+      website: 'https://bellbird.app',
+      followers: 120,
+      following: 85,
+      isFollowing: false,
+    },
+    {
+      id: '2',
+      username: 'jane_doe',
+      name: 'Jane Doe',
+      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
+      coverImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200',
+      bio: 'Photography enthusiast & visual storyteller. Capturing everyday moments. #photography',
+      location: 'New York, NY',
+      website: 'https://janedoe.photos',
+      followers: 245,
+      following: 140,
+      isFollowing: true,
+    },
+    {
+      id: '3',
+      username: 'alex_dev',
+      name: 'Alex Rivera',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+      coverImage: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1200',
+      bio: 'Frontend engineer building with React, Vite & Tailwind. #webdev #react19',
+      location: 'Seattle, WA',
+      website: 'https://alexrivera.codes',
+      followers: 1820,
+      following: 430,
+      isFollowing: false,
+    },
+    {
+      id: '4',
+      username: 'sarah_design',
+      name: 'Sarah Chen',
+      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150',
+      coverImage: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=1200',
+      bio: 'Product designer & creative director. Typography, ergonomics, and clean systems. #designsystems',
+      location: 'London, UK',
+      website: 'https://sarahchen.design',
+      followers: 3100,
+      following: 290,
+      isFollowing: false,
+    },
+    {
+      id: '5',
+      username: 'bellbird_hq',
+      name: 'BellBird Official',
+      avatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150',
+      coverImage: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=1200',
+      bio: 'The official BellBird account. Welcome to the flock! #bellbird #updates',
+      location: 'Global / Decentralized',
+      website: 'https://bellbird.app',
+      followers: 15400,
+      following: 18,
+      isFollowing: true,
+      isPremium: true,
+    },
   ];
 
   let posts: Post[] = [
@@ -279,7 +372,99 @@ async function startServer() {
     res.status(201).json(newMessage);
   });
 
-  // --- VITE MIDDLEWARE (DEV) ---
+  // --- REAL-TIME TRANSLATION (GEMINI 3.8 FLASH) ---
+  const translationCache = new Map<string, string>();
+
+  const LANGUAGE_NAMES: Record<string, string> = {
+    es: 'Spanish (Español)',
+    fr: 'French (Français)',
+    de: 'German (Deutsch)',
+    ja: 'Japanese (日本語)',
+    hi: 'Hindi (हिन्दी)',
+    zh: 'Chinese (Simplified)',
+    ar: 'Arabic (العربية)',
+    pt: 'Portuguese (Português)',
+    it: 'Italian (Italiano)',
+    ko: 'Korean (한국어)',
+    ru: 'Russian (Русский)',
+    nl: 'Dutch (Nederlands)',
+    en: 'English',
+  };
+
+  app.post('/api/translate', async (req, res) => {
+    try {
+      const { text, targetLanguage = 'es' } = req.body;
+      if (!text || typeof text !== 'string' || !text.trim()) {
+        return res.json({ originalText: '', translatedText: '', targetLanguage });
+      }
+
+      const trimmed = text.trim();
+      const cacheKey = `${targetLanguage}:${trimmed}`;
+
+      // Return instant cached translation
+      if (translationCache.has(cacheKey)) {
+        return res.json({
+          originalText: trimmed,
+          translatedText: translationCache.get(cacheKey),
+          targetLanguage,
+          cached: true,
+        });
+      }
+
+      const langName = LANGUAGE_NAMES[targetLanguage] || targetLanguage;
+
+      if (!ai) {
+        // Fallback without failing if API key not available
+        return res.json({
+          originalText: trimmed,
+          translatedText: trimmed,
+          targetLanguage,
+          note: 'API key not configured',
+        });
+      }
+
+      const prompt = `You are a real-time translation system for the BellBird social network.
+Translate the following user text naturally into ${langName}.
+
+Rules:
+1. Preserve all emojis, whitespace, @mentions, #hashtags, and links exactly.
+2. Maintain natural colloquial phrasing and tone appropriate for social media.
+3. Return ONLY the translated text without surrounding quotes, explanation, language tags, or preface.
+
+Text to translate:
+${trimmed}`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: prompt,
+      });
+
+      const translatedText = response.text?.trim() || trimmed;
+      translationCache.set(cacheKey, translatedText);
+
+      res.json({
+        originalText: trimmed,
+        translatedText,
+        targetLanguage,
+        model: 'gemini-3.8-flash',
+      });
+    } catch (err: any) {
+      console.error('Translation error:', err?.message || err);
+      res.json({
+        originalText: req.body.text || '',
+        translatedText: req.body.text || '',
+        targetLanguage: req.body.targetLanguage || 'es',
+        error: true,
+      });
+    }
+  });
+
+  // Health check endpoint for Cloud Run and container rollout probes
+  app.get('/health', (_req, res) => {
+    res.status(200).send('OK');
+  });
+
+  // --- VITE MIDDLEWARE (DEV) / STATIC ASSETS (PROD) ---
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -287,9 +472,21 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static('dist/client'));
-    app.use('*', (req, res) => {
-      res.sendFile('dist/client/index.html', { root: '.' });
+    const distPath = path.resolve(process.cwd(), 'dist');
+    const clientPath = path.resolve(distPath, 'client');
+    const staticRoot = fs.existsSync(clientPath) ? clientPath : distPath;
+    const indexPath = fs.existsSync(path.join(staticRoot, 'index.html'))
+      ? path.join(staticRoot, 'index.html')
+      : path.join(distPath, 'index.html');
+
+    app.use(express.static(staticRoot));
+    // Express 5 catch-all SPA routing: use middleware without '*' string pattern
+    app.use((_req, res) => {
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(404).send('Not Found');
+      }
     });
   }
 

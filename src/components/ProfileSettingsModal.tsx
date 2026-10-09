@@ -46,6 +46,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import { useAuthStore } from '../store/useStore';
+import { useTranslationStore, SUPPORTED_LANGUAGES } from '../store/useTranslationStore';
 import clsx from 'clsx';
 
 export type SettingsOptionId =
@@ -74,6 +75,15 @@ export default function ProfileSettingsModal({
 }: ProfileSettingsModalProps) {
   const user = useAuthStore((state) => state.user);
   const updateUser = useAuthStore((state) => state.updateUser);
+
+  // Translation store
+  const {
+    isRealtimeActive,
+    toggleRealtime,
+    targetLanguage,
+    setTargetLanguage,
+    openModal: openTranslationModal,
+  } = useTranslationStore();
 
   // Search filter inside settings
   const [searchQuery, setSearchQuery] = useState('');
@@ -125,7 +135,7 @@ export default function ProfileSettingsModal({
   // --- Granular Privacy and Safety Features State ---
   const [expandedPrivacySub, setExpandedPrivacySub] = useState<string | null>(null);
 
-  // 1. Your X activity
+  // 1. Your BellBird activity
   const [markSensitiveMedia, setMarkSensitiveMedia] = useState(false);
   const [attachLocationToPosts, setAttachLocationToPosts] = useState(false);
   const [allowPostAnalyticsSharing, setAllowPostAnalyticsSharing] = useState(true);
@@ -170,7 +180,7 @@ export default function ProfileSettingsModal({
   const [grokCollaboratorResearch, setGrokCollaboratorResearch] = useState(false);
   const [grokFeedback, setGrokFeedback] = useState<string | null>(null);
 
-  // 3. Learn more about privacy on X
+  // 3. Learn more about privacy on BellBird
   const [activePrivacyModal, setActivePrivacyModal] = useState<'center' | 'policy' | 'contact' | null>(null);
   const [privacyContactType, setPrivacyContactType] = useState('data_access');
   const [privacyContactMessage, setPrivacyContactMessage] = useState('');
@@ -466,7 +476,7 @@ export default function ProfileSettingsModal({
         <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-white shrink-0 sticky top-0 z-20">
           <div className="flex items-center gap-2.5">
             <h2 className="text-lg font-bold text-[#0A192F]">Settings</h2>
-            <span className="text-xs text-gray-400 font-medium">· Twitter / X Style</span>
+            <span className="text-xs text-gray-400 font-medium">· BellBird</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -873,13 +883,13 @@ export default function ProfileSettingsModal({
                     {/* 5. PRIVACY AND SAFETY DROPDOWN FEATURES */}
                     {option.id === 'privacy' && (
                       <div className="space-y-6 max-w-xl pr-1 text-gray-800">
-                        {/* Section 1: Your X activity */}
+                        {/* Section 1: Your BellBird activity */}
                         <div>
                           <div className="mb-2.5 flex items-center justify-between">
                             <div>
-                              <h4 className="text-xs font-black uppercase tracking-wider text-gray-400">Your X activity</h4>
+                              <h4 className="text-xs font-black uppercase tracking-wider text-gray-400">Your BellBird activity</h4>
                               <p className="text-[11px] text-gray-500">
-                                Manage what information you allow other people on X to see.
+                                Manage what information you allow other people on BellBird to see.
                               </p>
                             </div>
                           </div>
@@ -906,7 +916,7 @@ export default function ProfileSettingsModal({
                                       )}
                                     </div>
                                     <p className="text-[11px] text-gray-500 line-clamp-1 mt-0.5">
-                                      Manage what information you allow other people on X to see.
+                                      Manage what information you allow other people on BellBird to see.
                                     </p>
                                   </div>
                                 </div>
@@ -1088,7 +1098,7 @@ export default function ProfileSettingsModal({
                                       </span>
                                     </div>
                                     <p className="text-[11px] text-gray-500 line-clamp-1 mt-0.5">
-                                      Decide what you see on X based on your preferences, like interests.
+                                      Decide what you see on BellBird based on your preferences, like interests.
                                     </p>
                                   </div>
                                 </div>
@@ -1548,7 +1558,7 @@ export default function ProfileSettingsModal({
                                     <div>
                                       <p className="font-semibold text-gray-900">Find you by email address</p>
                                       <p className="text-[11px] text-gray-500">
-                                        Let people who have your email address discover your account on X.
+                                        Let people who have your email address discover your account on BellBird.
                                       </p>
                                     </div>
                                     <button
@@ -1572,7 +1582,7 @@ export default function ProfileSettingsModal({
                                     <div>
                                       <p className="font-semibold text-gray-900">Find you by phone number</p>
                                       <p className="text-[11px] text-gray-500">
-                                        Let people who have your phone number discover your account on X.
+                                        Let people who have your phone number discover your account on BellBird.
                                       </p>
                                     </div>
                                     <button
@@ -1676,7 +1686,7 @@ export default function ProfileSettingsModal({
                                       <option value="France">France</option>
                                     </select>
                                     <p className="text-[11px] text-gray-500">
-                                      The country helps X tailor legal requirements, tax settings, and regional compliance.
+                                      The country helps BellBird tailor legal requirements, tax settings, and regional compliance.
                                     </p>
                                   </div>
 
@@ -1735,7 +1745,7 @@ export default function ProfileSettingsModal({
                                   <div className="min-w-0">
                                     <p className="text-xs font-bold text-[#0A192F]">Ads preferences</p>
                                     <p className="text-[11px] text-gray-500 line-clamp-1 mt-0.5">
-                                      Manage your ads experience on X.
+                                      Manage your ads experience on BellBird.
                                     </p>
                                   </div>
                                 </div>
@@ -1750,7 +1760,7 @@ export default function ProfileSettingsModal({
                                     <div>
                                       <p className="font-semibold text-gray-900">Personalized ads</p>
                                       <p className="text-[11px] text-gray-500">
-                                        Allow ads based on your activity off X and interests.
+                                        Allow ads based on your activity off BellBird and interests.
                                       </p>
                                     </div>
                                     <button
@@ -1811,7 +1821,7 @@ export default function ProfileSettingsModal({
                                   <div className="min-w-0">
                                     <p className="text-xs font-bold text-[#0A192F]">Inferred identity</p>
                                     <p className="text-[11px] text-gray-500 line-clamp-1 mt-0.5">
-                                      Allow X to personalize your experience with your inferred activity, e.g. activity on devices you haven’t used to log in to X.
+                                      Allow BellBird to personalize your experience with your inferred activity, e.g. activity on devices you haven’t used to log in to BellBird.
                                     </p>
                                   </div>
                                 </div>
@@ -1885,7 +1895,7 @@ export default function ProfileSettingsModal({
                                   <div className="min-w-0">
                                     <p className="text-xs font-bold text-[#0A192F]">Data sharing with business partners</p>
                                     <p className="text-[11px] text-gray-500 line-clamp-1 mt-0.5">
-                                      Allow sharing of additional information with X’s business partners.
+                                      Allow sharing of additional information with BellBird’s business partners.
                                     </p>
                                   </div>
                                 </div>
@@ -1959,7 +1969,7 @@ export default function ProfileSettingsModal({
                                   <div className="min-w-0">
                                     <p className="text-xs font-bold text-[#0A192F]">Location information</p>
                                     <p className="text-[11px] text-gray-500 line-clamp-1 mt-0.5">
-                                      Manage the location information X uses to personalize your experience.
+                                      Manage the location information BellBird uses to personalize your experience.
                                     </p>
                                   </div>
                                 </div>
@@ -1998,7 +2008,7 @@ export default function ProfileSettingsModal({
                                     <div>
                                       <p className="font-semibold text-gray-900">Precise location (GPS)</p>
                                       <p className="text-[11px] text-gray-500">
-                                        Allow X to collect, store, and utilize your device’s exact GPS coordinates.
+                                        Allow BellBird to collect, store, and utilize your device’s exact GPS coordinates.
                                       </p>
                                     </div>
                                     <button
@@ -2123,11 +2133,11 @@ export default function ProfileSettingsModal({
                           </div>
                         </div>
 
-                        {/* Section 3: Learn more about privacy on X */}
+                        {/* Section 3: Learn more about privacy on BellBird */}
                         <div className="pt-2 border-t border-gray-200/80">
                           <div className="mb-2.5">
                             <h4 className="text-xs font-black uppercase tracking-wider text-gray-400">
-                              Learn more about privacy on X
+                              Learn more about privacy on BellBird
                             </h4>
                             <p className="text-[11px] text-gray-500">
                               Review privacy resources, global disclosures, or contact our team.
@@ -2336,6 +2346,65 @@ export default function ProfileSettingsModal({
                           </button>
                         </div>
 
+                        {/* Real-Time Live Translation Option */}
+                        <div className="p-3.5 bg-blue-50/60 rounded-2xl border border-blue-200/80 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Globe size={16} className="text-[#1769FF]" />
+                              <div>
+                                <p className="text-xs font-bold text-[#0A192F] flex items-center gap-1.5">
+                                  <span>Real-Time Translation</span>
+                                  <span className="text-[10px] bg-[#1769FF] text-white px-1.5 py-0.2 rounded-full font-bold">
+                                    AI
+                                  </span>
+                                </p>
+                                <p className="text-[11px] text-gray-500 mt-0.5">
+                                  Translate chirps and profile descriptions automatically across BellBird.
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={toggleRealtime}
+                              className={clsx(
+                                'w-11 h-6 rounded-full transition-colors relative shrink-0 p-0.5 cursor-pointer',
+                                isRealtimeActive ? 'bg-[#1769FF]' : 'bg-gray-300'
+                              )}
+                            >
+                              <span
+                                className={clsx(
+                                  'block w-5 h-5 rounded-full bg-white shadow-sm transition-transform',
+                                  isRealtimeActive ? 'translate-x-5' : 'translate-x-0'
+                                )}
+                              />
+                            </button>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1 border-t border-blue-100 text-xs">
+                            <span className="text-gray-600 font-medium">Target Language</span>
+                            <select
+                              value={targetLanguage}
+                              onChange={(e) => setTargetLanguage(e.target.value)}
+                              className="px-2.5 py-1 text-xs bg-white border border-gray-200 rounded-lg text-gray-800 focus:outline-none focus:border-[#1769FF]"
+                            >
+                              {SUPPORTED_LANGUAGES.map((lang) => (
+                                <option key={lang.code} value={lang.code}>
+                                  {lang.flag} {lang.name} ({lang.nativeName})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={openTranslationModal}
+                            className="w-full py-1.5 bg-white hover:bg-blue-50 text-[#1769FF] text-xs font-bold rounded-xl border border-blue-200 transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <Sparkles size={13} />
+                            <span>Open Translation Studio & Sandbox</span>
+                          </button>
+                        </div>
+
                         {/* Media Cache */}
                         <div className="p-3.5 bg-gray-50/70 rounded-2xl border border-gray-200/80 flex items-center justify-between">
                           <div>
@@ -2473,7 +2542,7 @@ export default function ProfileSettingsModal({
                   <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-3">
                     <Shield className="text-emerald-600 shrink-0 mt-0.5" size={20} />
                     <div>
-                      <h4 className="font-bold text-emerald-900 text-sm">Privacy Principles on X</h4>
+                      <h4 className="font-bold text-emerald-900 text-sm">Privacy Principles on BellBird</h4>
                       <p className="text-emerald-800 text-xs mt-1">
                         We believe user privacy and security are foundational human rights. You control your posts, your audience, your discoverability, and whether your data is used for AI model training.
                       </p>

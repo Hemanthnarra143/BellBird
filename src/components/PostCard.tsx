@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { Heart, MessageCircle, Share, MoreHorizontal, Bookmark } from 'lucide-react';
+import { Heart, MessageCircle, Share, MoreHorizontal, Bookmark, Globe, Sparkles, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../store/useStore';
+import { useTranslationStore, SUPPORTED_LANGUAGES } from '../store/useTranslationStore';
 import clsx from 'clsx';
 import { Link } from 'react-router-dom';
 
@@ -33,8 +34,65 @@ export default function PostCard({ post, onLike, onBookmark }: PostCardProps) {
   const bookmarks = useAuthStore((state) => state.bookmarks);
   const toggleBookmark = useAuthStore((state) => state.toggleBookmark);
 
+  // Translation store
+  const { isRealtimeActive, targetLanguage, translateText } = useTranslationStore();
+  const [translatedContent, setTranslatedContent] = useState<string | null>(null);
+  const [showOriginal, setShowOriginal] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+
   const isLiked = user && post.likedBy.includes(user.id);
   const isBookmarked = bookmarks.includes(post.id);
+
+  const targetLangObj =
+    SUPPORTED_LANGUAGES.find((l) => l.code === targetLanguage) || SUPPORTED_LANGUAGES[0];
+
+  // Automatic real-time translation effect
+  useEffect(() => {
+    let isCancelled = false;
+
+    if (isRealtimeActive && post.content) {
+      setIsTranslating(true);
+      translateText(post.content, targetLanguage)
+        .then((result) => {
+          if (!isCancelled) {
+            setTranslatedContent(result);
+            setShowOriginal(false);
+          }
+        })
+        .finally(() => {
+          if (!isCancelled) setIsTranslating(false);
+        });
+    } else {
+      // If real-time turned off, revert back to null unless manually translated
+      if (!showOriginal && !isRealtimeActive) {
+        setTranslatedContent(null);
+      }
+    }
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isRealtimeActive, targetLanguage, post.content, translateText]);
+
+  // Manual on-demand translate toggle
+  const handleManualTranslate = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (translatedContent) {
+      setShowOriginal(!showOriginal);
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      const result = await translateText(post.content, targetLanguage);
+      setTranslatedContent(result);
+      setShowOriginal(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
 
   const handleBookmarkClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -79,6 +137,10 @@ export default function PostCard({ post, onLike, onBookmark }: PostCardProps) {
     });
   };
 
+  const displayText =
+    translatedContent && !showOriginal ? translatedContent : post.content;
+  const isCurrentlyTranslated = Boolean(translatedContent && !showOriginal);
+
   return (
     <article className="border-b border-gray-100 p-4 sm:p-5 hover:bg-gray-50/60 transition-colors">
       <div className="flex gap-3 sm:gap-4">
@@ -113,8 +175,44 @@ export default function PostCard({ post, onLike, onBookmark }: PostCardProps) {
             </button>
           </div>
           
-          <div className="text-gray-900 text-[15px] leading-relaxed whitespace-pre-wrap break-words mb-3">
-            {renderFormattedContent(post.content)}
+          <div className="text-gray-900 text-[15px] leading-relaxed whitespace-pre-wrap break-words mb-2">
+            {renderFormattedContent(displayText)}
+          </div>
+
+          {/* Real-Time Translation Indicator / Toggle */}
+          <div className="mb-3 flex items-center gap-2 text-xs">
+            {isTranslating ? (
+              <span className="inline-flex items-center gap-1.5 text-blue-600 bg-blue-50/80 px-2.5 py-1 rounded-md animate-pulse">
+                <Loader2 size={12} className="animate-spin" />
+                <span>Translating real-time...</span>
+              </span>
+            ) : isCurrentlyTranslated ? (
+              <div className="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-gray-100/80 hover:bg-gray-200/70 px-2.5 py-0.5 rounded-full transition-colors">
+                <span className="text-xs">{targetLangObj.flag}</span>
+                <span>Translated to {targetLangObj.name}</span>
+                <span>·</span>
+                <button
+                  type="button"
+                  onClick={() => setShowOriginal(true)}
+                  className="font-semibold text-[#1769FF] hover:underline cursor-pointer"
+                >
+                  Show original
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleManualTranslate}
+                className="inline-flex items-center gap-1 text-[11px] text-gray-500 hover:text-[#1769FF] transition-colors py-0.5 cursor-pointer group/tr"
+              >
+                <Globe size={12} className="text-gray-400 group-hover/tr:text-[#1769FF]" />
+                <span>
+                  {showOriginal && translatedContent
+                    ? `Show ${targetLangObj.name} translation`
+                    : `Translate chirp to ${targetLangObj.name}`}
+                </span>
+              </button>
+            )}
           </div>
           
           {post.image && (

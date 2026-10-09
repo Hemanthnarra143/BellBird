@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/useStore';
+import { useTranslationStore, SUPPORTED_LANGUAGES } from '../store/useTranslationStore';
 import {
   ArrowLeft,
   MapPin,
@@ -18,10 +19,16 @@ import {
   FileText,
   HelpCircle,
   Bookmark,
+  Pencil,
+  Camera,
+  Globe,
+  Loader2,
 } from 'lucide-react';
 import PostCard, { Post } from '../components/PostCard';
 import PromotedAdCard, { PromotedAd, PROMOTED_ADS_DATABASE } from '../components/PromotedAdCard';
 import ProfileSettingsModal, { SettingsTab } from '../components/ProfileSettingsModal';
+import EditProfileModal from '../components/EditProfileModal';
+import TranslationHeaderWidget from '../components/TranslationHeaderWidget';
 import clsx from 'clsx';
 
 export default function Profile() {
@@ -35,9 +42,59 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [dismissedAdIds, setDismissedAdIds] = useState<string[]>([]);
 
-  // Settings Modal State
+  // Settings & Edit Profile Modals
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('account');
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+
+  // Bio Translation
+  const { isRealtimeActive, targetLanguage, translateText } = useTranslationStore();
+  const [translatedBio, setTranslatedBio] = useState<string | null>(null);
+  const [showOriginalBio, setShowOriginalBio] = useState(false);
+  const [isTranslatingBio, setIsTranslatingBio] = useState(false);
+
+  const targetLangObj =
+    SUPPORTED_LANGUAGES.find((l) => l.code === targetLanguage) || SUPPORTED_LANGUAGES[0];
+
+  useEffect(() => {
+    let cancelled = false;
+    if (profile?.bio && isRealtimeActive) {
+      setIsTranslatingBio(true);
+      translateText(profile.bio, targetLanguage)
+        .then((res) => {
+          if (!cancelled) {
+            setTranslatedBio(res);
+            setShowOriginalBio(false);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setIsTranslatingBio(false);
+        });
+    } else if (!isRealtimeActive && !showOriginalBio) {
+      setTranslatedBio(null);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.bio, isRealtimeActive, targetLanguage, translateText]);
+
+  const handleManualTranslateBio = async () => {
+    if (translatedBio) {
+      setShowOriginalBio(!showOriginalBio);
+      return;
+    }
+    if (!profile?.bio) return;
+    setIsTranslatingBio(true);
+    try {
+      const res = await translateText(profile.bio, targetLanguage);
+      setTranslatedBio(res);
+      setShowOriginalBio(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsTranslatingBio(false);
+    }
+  };
 
   // Interleave person profile posts with random sponsored ads
   const profileTimeline = useMemo(() => {
@@ -164,30 +221,69 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Top Header Settings Button */}
-        <button
-          onClick={() => openSettings('privacy')}
-          aria-label="Open Settings and Privacy"
-          className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700 hover:text-[#1769FF] flex items-center justify-center min-h-[40px] min-w-[40px]"
-        >
-          <Settings size={20} />
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Real-time Translation Control */}
+          <TranslationHeaderWidget />
+
+          {/* Top Header Settings Button */}
+          <button
+            onClick={() => openSettings('privacy')}
+            aria-label="Open Settings and Privacy"
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700 hover:text-[#1769FF] flex items-center justify-center min-h-[40px] min-w-[40px]"
+          >
+            <Settings size={20} />
+          </button>
+        </div>
       </div>
 
       {/* Cover and Avatar */}
       <div>
-        <div className="h-32 sm:h-48 bg-gradient-to-r from-blue-100 via-blue-200 to-[#1769FF] w-full" />
+        <div
+          className="h-32 sm:h-48 w-full bg-cover bg-center relative group"
+          style={{
+            backgroundImage: profile.coverImage
+              ? `url(${profile.coverImage})`
+              : 'linear-gradient(to right, #dbeafe, #bfdbfe, #1769FF)',
+            backgroundColor: '#1769FF',
+          }}
+        >
+          {currentUser?.id === profile.id && (
+            <button
+              type="button"
+              onClick={() => setIsEditProfileOpen(true)}
+              className="absolute top-3 right-3 bg-black/50 hover:bg-black/75 text-white p-2 rounded-full opacity-80 sm:opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 text-xs px-3 backdrop-blur-sm"
+              title="Change banner"
+            >
+              <Camera size={14} />
+              <span className="hidden sm:inline">Edit header</span>
+            </button>
+          )}
+        </div>
+
         <div className="px-4 sm:px-6 relative">
           <div className="flex justify-between items-start">
-            <img
-              src={profile.avatar}
-              alt={profile.name}
-              referrerPolicy="no-referrer"
-              onError={(e) => {
-                e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name)}&background=1769FF&color=fff`;
-              }}
-              className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white -mt-12 sm:-mt-16 bg-white object-cover shadow-sm"
-            />
+            <div className="relative group">
+              <img
+                src={profile.avatar}
+                alt={profile.name}
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name)}&background=1769FF&color=fff`;
+                }}
+                className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white -mt-12 sm:-mt-16 bg-white object-cover shadow-sm"
+              />
+              {currentUser?.id === profile.id && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditProfileOpen(true)}
+                  aria-label="Edit avatar"
+                  className="absolute bottom-1 right-1 bg-[#1769FF] hover:bg-blue-600 text-white p-1.5 rounded-full border-2 border-white shadow-sm transition-transform hover:scale-110 cursor-pointer"
+                  title="Change avatar photo"
+                >
+                  <Camera size={14} />
+                </button>
+              )}
+            </div>
 
             {/* Profile Action Buttons */}
             <div className="flex items-center gap-2 mt-3">
@@ -207,10 +303,11 @@ export default function Profile() {
               ) : (
                 <button
                   type="button"
-                  onClick={() => openSettings('privacy')}
-                  className="px-4 py-2 rounded-full font-bold border border-gray-200 text-[#0A192F] hover:bg-gray-50 transition-colors text-sm"
+                  onClick={() => setIsEditProfileOpen(true)}
+                  className="px-4 py-2 rounded-full font-bold border border-gray-300 text-[#0A192F] hover:bg-gray-100 hover:border-gray-400 active:scale-95 transition-all text-sm flex items-center gap-1.5 shadow-xs cursor-pointer"
                 >
-                  Edit profile
+                  <Pencil size={15} />
+                  <span>Edit profile</span>
                 </button>
               )}
 
@@ -237,16 +334,63 @@ export default function Profile() {
             <p className="text-gray-500 text-sm">@{profile.username}</p>
           </div>
 
-          <p className="mt-3 text-gray-900 leading-normal">{profile.bio}</p>
+          {/* Profile Bio with Real-Time Translation */}
+          <div className="mt-3">
+            <p className="text-gray-900 leading-normal whitespace-pre-wrap">
+              {translatedBio && !showOriginalBio ? translatedBio : profile.bio}
+            </p>
+
+            {/* Bio Translation Toggle */}
+            {profile.bio && (
+              <div className="mt-1.5 flex items-center gap-2 text-xs">
+                {isTranslatingBio ? (
+                  <span className="inline-flex items-center gap-1 text-blue-600 animate-pulse text-[11px]">
+                    <Loader2 size={11} className="animate-spin" />
+                    <span>Translating bio...</span>
+                  </span>
+                ) : translatedBio && !showOriginalBio ? (
+                  <div className="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-gray-100/90 px-2 py-0.5 rounded-full">
+                    <span>{targetLangObj.flag} Translated to {targetLangObj.name}</span>
+                    <span>·</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowOriginalBio(true)}
+                      className="text-[#1769FF] font-semibold hover:underline"
+                    >
+                      Show original
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleManualTranslateBio}
+                    className="inline-flex items-center gap-1 text-[11px] text-gray-500 hover:text-[#1769FF] transition-colors py-0.5 cursor-pointer"
+                  >
+                    <Globe size={12} className="text-gray-400" />
+                    <span>
+                      {showOriginalBio && translatedBio
+                        ? `Show ${targetLangObj.name} bio`
+                        : `Translate bio to ${targetLangObj.name}`}
+                    </span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="flex flex-wrap gap-4 mt-3 text-sm text-gray-500">
             <div className="flex items-center gap-1">
-              <MapPin size={16} /> San Francisco, CA
+              <MapPin size={16} /> {profile.location || 'San Francisco, CA'}
             </div>
             <div className="flex items-center gap-1">
               <LinkIcon size={16} />{' '}
-              <a href="#" className="text-[#1769FF] hover:underline">
-                bellbird.app
+              <a
+                href={profile.website?.startsWith('http') ? profile.website : `https://${profile.website || 'bellbird.app'}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[#1769FF] hover:underline"
+              >
+                {profile.website ? profile.website.replace(/^https?:\/\//, '') : 'bellbird.app'}
               </a>
             </div>
             <div className="flex items-center gap-1">
@@ -344,6 +488,15 @@ export default function Profile() {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         initialTab={settingsTab}
+      />
+
+      {/* Dedicated Edit Profile Modal */}
+      <EditProfileModal
+        isOpen={isEditProfileOpen}
+        onClose={() => setIsEditProfileOpen(false)}
+        onSaved={(updated) => {
+          setProfile((prev: any) => ({ ...prev, ...updated }));
+        }}
       />
     </div>
   );

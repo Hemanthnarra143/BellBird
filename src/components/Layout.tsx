@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
-import { Home, Search, User, Bell, Mail, LogOut, Bird, Feather, Bookmark } from 'lucide-react';
+import { Home, Search, User, Bell, Mail, LogOut, Bird, Feather, Bookmark, Globe } from 'lucide-react';
 import { useAuthStore } from '../store/useStore';
+import { useTranslationStore, SUPPORTED_LANGUAGES } from '../store/useTranslationStore';
 import ComposeModal from './ComposeModal';
+import TranslationModal from './TranslationModal';
 import clsx from 'clsx';
 
 export default function Layout() {
@@ -12,6 +14,11 @@ export default function Layout() {
   const bookmarks = useAuthStore((state) => state.bookmarks);
   const navigate = useNavigate();
   const [desktopSearch, setDesktopSearch] = useState('');
+
+  // Translation store
+  const { isRealtimeActive, targetLanguage, openModal: openTranslationModal } = useTranslationStore();
+  const currentLang =
+    SUPPORTED_LANGUAGES.find((l) => l.code === targetLanguage) || SUPPORTED_LANGUAGES[0];
 
   const handleLogout = () => {
     logout();
@@ -98,12 +105,43 @@ export default function Layout() {
           </div>
         </nav>
 
-        <div className="p-4 border-t border-gray-100">
+        <div className="p-4 border-t border-gray-100 space-y-1.5">
+          {/* Quick Real-Time Translation Trigger */}
+          <button
+            type="button"
+            onClick={openTranslationModal}
+            className={clsx(
+              'flex items-center justify-between px-3.5 py-2.5 w-full text-left rounded-xl transition-all font-semibold text-sm cursor-pointer border',
+              isRealtimeActive
+                ? 'bg-blue-50/80 border-blue-200 text-[#1769FF]'
+                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 border-transparent'
+            )}
+            title="Real-Time Translation Settings"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-xl leading-none">{currentLang.flag}</span>
+              <div>
+                <p className="leading-tight text-sm">Translate</p>
+                <p className="text-[11px] text-gray-500 font-normal">
+                  {isRealtimeActive ? `${currentLang.name} · Live` : currentLang.name}
+                </p>
+              </div>
+            </div>
+            {isRealtimeActive ? (
+              <span className="flex h-2.5 w-2.5 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+              </span>
+            ) : (
+              <Globe size={16} className="text-gray-400" />
+            )}
+          </button>
+
           <button
             onClick={handleLogout}
-            className="flex items-center gap-4 px-4 py-3 w-full text-left rounded-xl text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors font-medium text-base cursor-pointer"
+            className="flex items-center gap-4 px-4 py-2.5 w-full text-left rounded-xl text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors font-medium text-sm cursor-pointer"
           >
-            <LogOut size={22} />
+            <LogOut size={20} />
             <span>Log Out</span>
           </button>
         </div>
@@ -255,6 +293,9 @@ export default function Layout() {
 
       {/* Global Twitter-Style Compose Modal */}
       <ComposeModal />
+
+      {/* Global Real-Time Translation Modal */}
+      <TranslationModal />
     </div>
   );
 }

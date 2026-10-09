@@ -1,0 +1,6 @@
+{
+  "name": "BellBird",
+  "description": "A production-oriented full-stack social media MVP.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-blue: #1769FF;
+  --color-brand-navy: #0A192F;
+}
+
+html, body {
+  height: 100%;
+}

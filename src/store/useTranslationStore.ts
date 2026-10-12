@@ -43,6 +43,9 @@ interface TranslationState {
 const STORAGE_KEY_ACTIVE = 'bellbird_translation_active';
 const STORAGE_KEY_LANG = 'bellbird_translation_lang';
 
+// In-flight promise tracker to deduplicate identical concurrent translation requests
+const inFlightRequests = new Map<string, Promise<string>>();
+
 export const useTranslationStore = create<TranslationState>((set, get) => {
   const initialActive = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_ACTIVE) === 'true' : false;
   const initialLang = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_LANG) || 'es' : 'es';
@@ -85,29 +88,41 @@ export const useTranslationStore = create<TranslationState>((set, get) => {
         return get().cache[cacheKey];
       }
 
-      try {
-        const res = await fetch('/api/translate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            text: text.trim(),
-            targetLanguage: target,
-          }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const translated = data.translatedText || text;
-          set((state) => ({
-            cache: { ...state.cache, [cacheKey]: translated },
-          }));
-          return translated;
-        }
-      } catch (err) {
-        console.error('Translation error:', err);
+      // Check if already in-flight
+      if (inFlightRequests.has(cacheKey)) {
+        return inFlightRequests.get(cacheKey)!;
       }
 
-      return text;
+      const requestPromise = (async () => {
+        try {
+          const res = await fetch('/api/translate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              text: text.trim(),
+              targetLanguage: target,
+            }),
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            const translated = data.translatedText || text;
+            set((state) => ({
+              cache: { ...state.cache, [cacheKey]: translated },
+            }));
+            return translated;
+          }
+        } catch (err: any) {
+          console.warn('[Translate] Notice:', err?.message || err);
+        } finally {
+          inFlightRequests.delete(cacheKey);
+        }
+
+        return text;
+      })();
+
+      inFlightRequests.set(cacheKey, requestPromise);
+      return requestPromise;
     },
   };
 });

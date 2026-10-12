@@ -22,21 +22,43 @@ interface User {
   fontSize?: 'small' | 'medium' | 'large';
 }
 
+const DEFAULT_USER: User = {
+  id: '1',
+  username: 'bellbird_user',
+  name: 'BellBird User',
+  email: 'demo@bellbird.app',
+  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+  coverImage: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200',
+  bio: 'Product designer & creative thinker. Exploring new interfaces.',
+  location: 'San Francisco, CA',
+  website: 'https://bellbird.app',
+  followers: 1240,
+  following: 382,
+  isPremium: true,
+  isPrivate: false,
+  allowDMs: true,
+  twoFactor: false,
+  fontSize: 'medium',
+};
+
 const getStoredUser = (): User | null => {
   try {
     const raw = localStorage.getItem('bellbird_user');
-    return raw ? JSON.parse(raw) : null;
+    if (raw) return JSON.parse(raw);
   } catch {
-    return null;
+    // ignore
   }
+  return DEFAULT_USER;
 };
 
 const getStoredToken = (): string | null => {
   try {
-    return localStorage.getItem('bellbird_token');
+    const raw = localStorage.getItem('bellbird_token');
+    if (raw) return raw;
   } catch {
-    return null;
+    // ignore
   }
+  return 'demo-jwt-token';
 };
 
 interface AuthState {

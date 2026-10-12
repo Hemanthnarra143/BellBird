@@ -3,7 +3,7 @@ import { useAuthStore } from '../store/useStore';
 import PostCard, { Post } from '../components/PostCard';
 import PromotedAdCard, { PromotedAd, PROMOTED_ADS_DATABASE } from '../components/PromotedAdCard';
 import TranslationHeaderWidget from '../components/TranslationHeaderWidget';
-import { Bird, ArrowDown, RotateCcw, Check, Bookmark } from 'lucide-react';
+import { Bird, ArrowDown, RotateCcw, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import clsx from 'clsx';
 
@@ -14,7 +14,6 @@ export default function Feed() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const newPostCount = useAuthStore((state) => state.newPostCount);
-  const bookmarks = useAuthStore((state) => state.bookmarks);
   const user = useAuthStore((state) => state.user);
 
   // --- Promoted Ads in Feed State ---
@@ -203,7 +202,7 @@ export default function Feed() {
         {/* Left Side: Mobile User Avatar / Refresh Status */}
         <div className="flex items-center gap-2 z-10 min-w-[40px]">
           <Link
-            to={`/profile/${user?.id || ''}`}
+            to={`/profile/${user?.id || '1'}`}
             className="md:hidden flex items-center"
             aria-label="View Profile"
           >
@@ -234,23 +233,9 @@ export default function Feed() {
           </Link>
         </div>
 
-        {/* Right Side: Translation Widget & Quick Bookmarks Button */}
-        <div className="flex items-center justify-end gap-1.5 z-10 min-w-[70px]">
+        {/* Right Side: Translation Widget */}
+        <div className="flex items-center justify-end gap-1.5 z-10 min-w-[36px]">
           <TranslationHeaderWidget />
-
-          <Link
-            to="/bookmarks"
-            aria-label="View saved bookmarks"
-            className="p-1.5 text-gray-600 hover:text-[#1769FF] hover:bg-blue-50 rounded-full transition-colors flex items-center gap-1 group relative min-h-[36px] min-w-[36px] justify-center"
-            title="Bookmarks"
-          >
-            <Bookmark size={20} className="group-hover:scale-105 transition-transform" />
-            {bookmarks.length > 0 && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 bg-[#1769FF] text-white rounded-full leading-none">
-                {bookmarks.length}
-              </span>
-            )}
-          </Link>
         </div>
       </div>
 

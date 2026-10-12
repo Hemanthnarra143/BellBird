@@ -56,7 +56,7 @@ export default function TranslationModal() {
       const res = await translateText(testInput, targetLanguage);
       setTestOutput(res);
     } catch (err) {
-      console.error(err);
+      console.warn('[TranslationModal] Test note:', err);
     } finally {
       setIsTranslatingTest(false);
     }

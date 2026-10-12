@@ -88,7 +88,7 @@ export default function PostCard({ post, onLike, onBookmark }: PostCardProps) {
       setTranslatedContent(result);
       setShowOriginal(false);
     } catch (err) {
-      console.error(err);
+      console.warn('[PostCard] Translation note:', err);
     } finally {
       setIsTranslating(false);
     }

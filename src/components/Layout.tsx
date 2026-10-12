@@ -42,7 +42,7 @@ export default function Layout() {
     { to: '/notifications', icon: Bell, label: 'Alerts' },
     { to: '/messages', icon: Mail, label: 'Messages' },
     { to: '/bookmarks', icon: Bookmark, label: 'Bookmarks', badge: bookmarks.length },
-    { to: `/profile/${user?.id || ''}`, icon: User, label: 'Profile' },
+    { to: `/profile/${user?.id || '1'}`, icon: User, label: 'Profile' },
   ];
 
   // Mobile bottom navigation (5 primary Twitter tabs)
@@ -51,7 +51,7 @@ export default function Layout() {
     { to: '/search', icon: Search, label: 'Search' },
     { to: '/notifications', icon: Bell, label: 'Alerts' },
     { to: '/messages', icon: Mail, label: 'Messages' },
-    { to: `/profile/${user?.id || ''}`, icon: User, label: 'Profile' },
+    { to: `/profile/${user?.id || '1'}`, icon: User, label: 'Profile' },
   ];
 
   return (

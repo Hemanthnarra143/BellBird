@@ -36,7 +36,8 @@ export default function App() {
           <Route index element={<Feed />} />
           <Route path="search" element={<Search />} />
           <Route path="bookmarks" element={<Bookmarks />} />
-          <Route path="profile/:id?" element={<Profile />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="profile/:id" element={<Profile />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="messages" element={<Messages />} />
         </Route>

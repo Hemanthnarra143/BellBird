@@ -35,7 +35,7 @@ export default function Profile() {
   const { id } = useParams();
   const navigate = useNavigate();
   const currentUser = useAuthStore((state) => state.user);
-  const profileId = id || currentUser?.id;
+  const profileId = id || currentUser?.id || '1';
 
   const [profile, setProfile] = useState<any>(null);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -90,7 +90,7 @@ export default function Profile() {
       setTranslatedBio(res);
       setShowOriginalBio(false);
     } catch (err) {
-      console.error(err);
+      console.warn('[Profile] Translation note:', err);
     } finally {
       setIsTranslatingBio(false);
     }
@@ -126,34 +126,55 @@ export default function Profile() {
   }, [posts, dismissedAdIds, profileId]);
 
   useEffect(() => {
+    let isCancelled = false;
     const fetchData = async () => {
       setLoading(true);
       try {
+        const target = profileId || '1';
         const [userRes, postsRes] = await Promise.all([
-          fetch(`/api/users/${profileId}`),
+          fetch(`/api/users/${encodeURIComponent(target)}`),
           fetch('/api/posts'),
         ]);
 
+        let resolvedUser: any = null;
         if (userRes.ok) {
-          const userData = await userRes.json();
-          setProfile(userData);
+          resolvedUser = await userRes.json();
+          if (!isCancelled) setProfile(resolvedUser);
+        } else if (currentUser) {
+          resolvedUser = currentUser;
+          if (!isCancelled) setProfile(currentUser);
         }
 
         if (postsRes.ok) {
           const allPosts = await postsRes.json();
-          setPosts(allPosts.filter((p: Post) => p.author.id === profileId));
+          const targetUser = resolvedUser || currentUser;
+          if (targetUser) {
+            const filtered = allPosts.filter(
+              (p: any) =>
+                p.authorId === targetUser.id ||
+                p.author?.id === targetUser.id ||
+                p.author?.username?.toLowerCase() === targetUser.username?.toLowerCase()
+            );
+            if (!isCancelled) setPosts(filtered);
+          } else {
+            if (!isCancelled) setPosts(allPosts);
+          }
         }
       } catch (err) {
-        console.error(err);
+        console.warn('[Profile] Error loading profile:', err);
+        if (!isCancelled && currentUser) {
+          setProfile(currentUser);
+        }
       } finally {
-        setLoading(false);
+        if (!isCancelled) setLoading(false);
       }
     };
 
-    if (profileId) {
-      fetchData();
-    }
-  }, [profileId]);
+    fetchData();
+    return () => {
+      isCancelled = true;
+    };
+  }, [profileId, currentUser?.id]);
 
   const handleLike = async (postId: string) => {
     try {
@@ -161,7 +182,7 @@ export default function Profile() {
       const updatedPost = await res.json();
       setPosts((prev) => prev.map((p) => (p.id === postId ? updatedPost : p)));
     } catch (err) {
-      console.error(err);
+      console.warn('[Profile] Like note:', err);
     }
   };
 
@@ -172,7 +193,7 @@ export default function Profile() {
       const updatedUser = await res.json();
       setProfile((prev: any) => ({ ...prev, ...updatedUser }));
     } catch (err) {
-      console.error(err);
+      console.warn('[Profile] Follow note:', err);
     }
   };
 

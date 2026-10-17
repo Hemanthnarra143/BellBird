@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   X,
   Camera,
@@ -60,6 +60,17 @@ export default function ChangeAvatarModal({
   const mobileCameraInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+
+  // Stop camera tracks cleanly (defined before useEffect hooks to prevent ReferenceError)
+  const handleStopCamera = useCallback(() => {
+    if (cameraStreamRef.current) {
+      stopCameraStream(cameraStreamRef.current);
+      cameraStreamRef.current = null;
+    }
+    setCameraStream(null);
+    setIsCameraActive(false);
+  }, []);
 
   // Check hardware camera capability on mount
   useEffect(() => {
@@ -76,25 +87,14 @@ export default function ChangeAvatarModal({
     } else {
       handleStopCamera();
     }
-  }, [isOpen, currentUser]);
+  }, [isOpen, currentUser, handleStopCamera]);
 
   // Clean up camera stream on unmount
   useEffect(() => {
     return () => {
       handleStopCamera();
     };
-  }, []);
-
-  if (!isOpen) return null;
-
-  // Stop camera tracks cleanly
-  const handleStopCamera = () => {
-    if (cameraStream) {
-      stopCameraStream(cameraStream);
-      setCameraStream(null);
-    }
-    setIsCameraActive(false);
-  };
+  }, [handleStopCamera]);
 
   // Launch in-browser live webcam capture
   const handleStartCamera = async () => {
@@ -102,6 +102,7 @@ export default function ChangeAvatarModal({
     setIsCameraActive(false);
     try {
       const stream = await getCameraStream();
+      cameraStreamRef.current = stream;
       setCameraStream(stream);
       setIsCameraActive(true);
       if (videoRef.current) {
@@ -209,6 +210,8 @@ export default function ChangeAvatarModal({
       setIsSaving(false);
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">

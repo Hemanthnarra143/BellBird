@@ -9,7 +9,8 @@ import Profile from './pages/Profile';
 import Notifications from './pages/Notifications';
 import Messages from './pages/Messages';
 import Auth from './pages/Auth';
-import DownloadApp from './pages/DownloadApp';
+
+import { useRealtimeSync } from './hooks/useRealtimeSync';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -26,6 +27,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 export default function App() {
+  useRealtimeSync();
+
   return (
     <BrowserRouter>
       <ScrollToTop />
@@ -41,8 +44,6 @@ export default function App() {
           <Route path="profile/:id" element={<Profile />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="messages" element={<Messages />} />
-          <Route path="download" element={<DownloadApp />} />
-          <Route path="android" element={<DownloadApp />} />
         </Route>
       </Routes>
     </BrowserRouter>

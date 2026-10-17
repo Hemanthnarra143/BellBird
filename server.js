@@ -110,6 +110,33 @@ async function startServer() {
     { id: "m1", senderId: "2", receiverId: "1", content: "Hey! Welcome to BellBird!", createdAt: new Date(Date.now() - 864e5).toISOString() }
   ];
   let bookmarkedPostIds = ["101", "103"];
+  const DATA_DIR = path.join(process.cwd(), "data");
+  const USERS_FILE = path.join(DATA_DIR, "users.json");
+  function saveUsersToDisk() {
+    try {
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      }
+      fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), "utf-8");
+    } catch (e) {
+      console.warn("[Server] Could not write users to disk:", e);
+    }
+  }
+  function loadUsersFromDisk() {
+    try {
+      if (fs.existsSync(USERS_FILE)) {
+        const raw = fs.readFileSync(USERS_FILE, "utf-8");
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          users = parsed;
+          console.log("[Server] Loaded persisted users from disk:", users.length);
+        }
+      }
+    } catch (e) {
+      console.warn("[Server] Could not read users from disk:", e);
+    }
+  }
+  loadUsersFromDisk();
   const populatePost = (post) => ({
     ...post,
     author: users.find((u) => u.id === post.authorId),
@@ -235,25 +262,108 @@ async function startServer() {
     users.unshift(oauthUser);
     res.json({ user: oauthUser, token: "jwt_" + oauthUser.id + "_" + Date.now() });
   });
+  const sseClients = /* @__PURE__ */ new Set();
+  function broadcastRealtime(event, data) {
+    const payload = `event: ${event}
+data: ${JSON.stringify(data)}
+
+`;
+    for (const client of sseClients) {
+      try {
+        client.write(payload);
+      } catch {
+        sseClients.delete(client);
+      }
+    }
+  }
+  app.get("/api/health", (req, res) => {
+    res.json({
+      status: "ok",
+      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+      activeUsers: users.length,
+      realtimeClients: sseClients.size
+    });
+  });
+  app.get("/api/realtime", (req, res) => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders?.();
+    res.write(`event: connected
+data: {"status":"connected","timestamp":"${(/* @__PURE__ */ new Date()).toISOString()}"}
+
+`);
+    sseClients.add(res);
+    const keepAlive = setInterval(() => {
+      try {
+        res.write(`: keepalive
+
+`);
+      } catch {
+        clearInterval(keepAlive);
+        sseClients.delete(res);
+      }
+    }, 25e3);
+    req.on("close", () => {
+      clearInterval(keepAlive);
+      sseClients.delete(res);
+    });
+  });
+  function findUserIndex(rawId) {
+    if (!rawId || rawId === "undefined" || rawId === "null" || rawId === "me" || rawId === "current") {
+      return 0;
+    }
+    const clean = rawId.replace(/^@/, "").toLowerCase().trim();
+    let idx = users.findIndex(
+      (u) => u.id === rawId || u.id.toLowerCase() === clean || u.username.toLowerCase() === clean
+    );
+    if (idx === -1 && (clean === "1" || clean === "bellbird_user" || users.length > 0)) {
+      idx = 0;
+    }
+    return idx;
+  }
   app.get("/api/users", (req, res) => {
     res.json(users);
   });
   app.get("/api/users/:id", (req, res) => {
-    const rawId = req.params.id;
-    if (!rawId || rawId === "undefined" || rawId === "null" || rawId === "me" || rawId === "current") {
-      return res.json(users[0]);
-    }
-    const clean = rawId.replace(/^@/, "").toLowerCase().trim();
-    const user = users.find(
-      (u) => u.id === rawId || u.id.toLowerCase() === clean || u.username.toLowerCase() === clean
-    ) || users[0];
+    const userIndex = findUserIndex(req.params.id);
+    const user = users[userIndex] || users[0];
     res.json(user);
   });
+  app.post("/api/users/:id/avatar", (req, res) => {
+    const userIndex = findUserIndex(req.params.id);
+    if (userIndex === -1) return res.status(404).json({ error: "User not found" });
+    const newAvatar = req.body.avatar || req.body.image;
+    if (!newAvatar) return res.status(400).json({ error: "Avatar image required" });
+    users[userIndex].avatar = newAvatar;
+    const updatedUser = users[userIndex];
+    posts.forEach((p) => {
+      if (p.authorId === updatedUser.id || p.author?.id === updatedUser.id || p.author?.username?.toLowerCase() === updatedUser.username.toLowerCase()) {
+        if (!p.author) p.author = {};
+        p.author.avatar = newAvatar;
+      }
+    });
+    saveUsersToDisk();
+    broadcastRealtime("USER_UPDATED", updatedUser);
+    res.json({ success: true, avatar: newAvatar, user: updatedUser });
+  });
   app.patch("/api/users/:id", (req, res) => {
-    const userIndex = users.findIndex((u) => u.id === req.params.id);
+    const userIndex = findUserIndex(req.params.id);
     if (userIndex === -1) return res.status(404).json({ error: "User not found" });
     users[userIndex] = { ...users[userIndex], ...req.body };
-    res.json(users[userIndex]);
+    const updatedUser = users[userIndex];
+    if (req.body.avatar || req.body.name) {
+      posts.forEach((p) => {
+        if (p.authorId === updatedUser.id || p.author?.id === updatedUser.id || p.author?.username?.toLowerCase() === updatedUser.username.toLowerCase()) {
+          if (!p.author) p.author = {};
+          if (req.body.avatar) p.author.avatar = req.body.avatar;
+          if (req.body.name) p.author.name = req.body.name;
+        }
+      });
+    }
+    saveUsersToDisk();
+    broadcastRealtime("USER_UPDATED", updatedUser);
+    res.json(updatedUser);
   });
   app.post("/api/users/:id/follow", (req, res) => {
     const user = users.find((u) => u.id === req.params.id);

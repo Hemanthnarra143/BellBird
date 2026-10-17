@@ -232,14 +232,23 @@ export default function ChangeAvatarModal({
     setErrorMessage('');
 
     try {
-      const res = await fetch(`/api/users/${currentUser?.id || '1'}`, {
-        method: 'PATCH',
+      let res = await fetch(`/api/users/${currentUser?.id || '1'}/avatar`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ avatar: selectedPreview }),
       });
 
+      if (!res.ok) {
+        res = await fetch(`/api/users/${currentUser?.id || '1'}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ avatar: selectedPreview }),
+        });
+      }
+
       if (res.ok) {
-        const updated = await res.json();
+        const data = await res.json();
+        const updated = data.user || data;
         updateUser(updated);
         onAvatarUpdated?.(selectedPreview);
         setSuccessToast(true);

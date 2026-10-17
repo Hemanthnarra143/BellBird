@@ -1,0 +1,69 @@
+[
+  {
+    "id": "1",
+    "username": "bellbird_user",
+    "name": "BellBird User",
+    "email": "demo@bellbird.app",
+    "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400",
+    "coverImage": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200",
+    "bio": "Exploring the world one chirp at a time. #technology #minimalism",
+    "location": "San Francisco, CA",
+    "website": "https://bellbird.app",
+    "followers": 120,
+    "following": 85,
+    "isFollowing": false
+  },
+  {
+    "id": "2",
+    "username": "jane_doe",
+    "name": "Jane Doe",
+    "avatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
+    "coverImage": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200",
+    "bio": "Photography enthusiast & visual storyteller. Capturing everyday moments. #photography",
+    "location": "New York, NY",
+    "website": "https://janedoe.photos",
+    "followers": 245,
+    "following": 140,
+    "isFollowing": true
+  },
+  {
+    "id": "3",
+    "username": "alex_dev",
+    "name": "Alex Rivera",
+    "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
+    "coverImage": "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1200",
+    "bio": "Frontend engineer building with React, Vite & Tailwind. #webdev #react19",
+    "location": "Seattle, WA",
+    "website": "https://alexrivera.codes",
+    "followers": 1820,
+    "following": 430,
+    "isFollowing": false
+  },
+  {
+    "id": "4",
+    "username": "sarah_design",
+    "name": "Sarah Chen",
+    "avatar": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150",
+    "coverImage": "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=1200",
+    "bio": "Product designer & creative director. Typography, ergonomics, and clean systems. #designsystems",
+    "location": "London, UK",
+    "website": "https://sarahchen.design",
+    "followers": 3100,
+    "following": 290,
+    "isFollowing": false
+  },
+  {
+    "id": "5",
+    "username": "bellbird_hq",
+    "name": "BellBird Official",
+    "avatar": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150",
+    "coverImage": "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=1200",
+    "bio": "The official BellBird account. Welcome to the flock! #bellbird #updates",
+    "location": "Global / Decentralized",
+    "website": "https://bellbird.app",
+    "followers": 15400,
+    "following": 18,
+    "isFollowing": true,
+    "isPremium": true
+  }
+]

@@ -43,7 +43,6 @@ export async function compressImage(
 
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-          // Fallback to raw data url if canvas is unavailable
           return resolve(reader.result as string);
         }
 
@@ -81,16 +80,16 @@ export async function hasCameraDevice(): Promise<boolean> {
 }
 
 /**
- * Requests device camera stream with facingMode user (front camera on mobile)
+ * Requests device camera stream with facingMode ('user' for front/selfie, 'environment' for rear/back)
  */
-export async function getCameraStream(): Promise<MediaStream> {
+export async function getCameraStream(facingMode: 'user' | 'environment' = 'user'): Promise<MediaStream> {
   if (!navigator?.mediaDevices?.getUserMedia) {
     throw new Error('Camera capture is not supported by your browser or device.');
   }
 
   return await navigator.mediaDevices.getUserMedia({
     video: {
-      facingMode: 'user',
+      facingMode,
       width: { ideal: 1280 },
       height: { ideal: 720 },
     },
@@ -110,4 +109,20 @@ export function stopCameraStream(stream: MediaStream | null): void {
       console.warn('Error stopping camera track:', e);
     }
   });
+}
+
+/**
+ * Query current browser camera permission status
+ */
+export async function queryCameraPermission(): Promise<'granted' | 'prompt' | 'denied' | 'unsupported'> {
+  if (!navigator?.permissions?.query) {
+    return 'unsupported';
+  }
+  try {
+    // @ts-ignore
+    const result = await navigator.permissions.query({ name: 'camera' });
+    return result.state as 'granted' | 'prompt' | 'denied';
+  } catch {
+    return 'unsupported';
+  }
 }

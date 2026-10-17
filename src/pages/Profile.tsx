@@ -178,6 +178,29 @@ export default function Profile() {
     };
   }, [profileId, currentUser?.id]);
 
+  // Real-time update listener for profile avatar and info
+  useEffect(() => {
+    const handleUserUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const updatedData = customEvent.detail;
+      if (updatedData) {
+        setProfile((prev: any) => {
+          if (!prev) return prev;
+          if (
+            prev.id === updatedData.id ||
+            prev.username?.toLowerCase() === updatedData.username?.toLowerCase()
+          ) {
+            return { ...prev, ...updatedData };
+          }
+          return prev;
+        });
+      }
+    };
+
+    window.addEventListener('bellbird:user-updated', handleUserUpdated);
+    return () => window.removeEventListener('bellbird:user-updated', handleUserUpdated);
+  }, []);
+
   const handleLike = async (postId: string) => {
     try {
       const res = await fetch(`/api/posts/${postId}/like`, { method: 'POST' });

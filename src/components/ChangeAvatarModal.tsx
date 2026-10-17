@@ -12,6 +12,10 @@ import {
   Sparkles,
   Smartphone,
   ShieldCheck,
+  FolderOpen,
+  HelpCircle,
+  CheckCircle2,
+  Lock,
 } from 'lucide-react';
 import { compressImage, getCameraStream, stopCameraStream, hasCameraDevice } from '../utils/imageUtils';
 import { useAuthStore } from '../store/useStore';
@@ -42,12 +46,13 @@ export default function ChangeAvatarModal({
   const currentUser = useAuthStore((state) => state.user);
   const updateUser = useAuthStore((state) => state.updateUser);
 
-  const [activeTab, setActiveTab] = useState<'upload' | 'camera' | 'presets' | 'url'>('upload');
+  const [activeTab, setActiveTab] = useState<'device' | 'live-camera' | 'presets' | 'url'>('device');
   const [selectedPreview, setSelectedPreview] = useState<string>(currentUser?.avatar || '');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successToast, setSuccessToast] = useState(false);
+  const [permissionStatus, setPermissionStatus] = useState<'unknown' | 'granted' | 'prompt' | 'denied'>('unknown');
 
   // Camera capture state
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
@@ -55,14 +60,15 @@ export default function ChangeAvatarModal({
   const [cameraError, setCameraError] = useState('');
   const [supportsCamera, setSupportsCamera] = useState(true);
 
-  // Refs
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Refs for local device apps
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const mobileCameraInputRef = useRef<HTMLInputElement>(null);
+  const fileStorageInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
 
-  // Stop camera tracks cleanly (defined before useEffect hooks to prevent ReferenceError)
+  // Stop camera tracks cleanly
   const handleStopCamera = useCallback(() => {
     if (cameraStreamRef.current) {
       stopCameraStream(cameraStreamRef.current);
@@ -72,9 +78,26 @@ export default function ChangeAvatarModal({
     setIsCameraActive(false);
   }, []);
 
-  // Check hardware camera capability on mount
+  // Check hardware camera capability and permissions on mount
   useEffect(() => {
     hasCameraDevice().then((hasCam) => setSupportsCamera(hasCam));
+
+    if (navigator?.permissions?.query) {
+      try {
+        navigator.permissions
+          // @ts-ignore
+          .query({ name: 'camera' })
+          .then((res) => {
+            setPermissionStatus(res.state as any);
+            res.onchange = () => setPermissionStatus(res.state as any);
+          })
+          .catch(() => {
+            setPermissionStatus('unknown');
+          });
+      } catch {
+        setPermissionStatus('unknown');
+      }
+    }
   }, []);
 
   // Sync initial avatar when modal opens
@@ -83,7 +106,7 @@ export default function ChangeAvatarModal({
       setSelectedPreview(currentUser.avatar || PRESET_AVATARS[0].url);
       setErrorMessage('');
       setCameraError('');
-      setActiveTab('upload');
+      setActiveTab('device');
     } else {
       handleStopCamera();
     }
@@ -96,12 +119,40 @@ export default function ChangeAvatarModal({
     };
   }, [handleStopCamera]);
 
+  // Explicitly prompt/test camera permission
+  const handleRequestCameraPermission = async () => {
+    setCameraError('');
+    try {
+      const stream = await getCameraStream();
+      setPermissionStatus('granted');
+      cameraStreamRef.current = stream;
+      setCameraStream(stream);
+      setIsCameraActive(true);
+      setActiveTab('live-camera');
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch((e) => console.warn('Video play error:', e));
+      }
+    } catch (err: any) {
+      console.warn('Camera permission request error:', err);
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setPermissionStatus('denied');
+        setCameraError(
+          'Camera access was denied by your browser or device. To grant permission, tap the lock/tune icon near your browser URL address bar and allow Camera.'
+        );
+      } else {
+        setCameraError(err.message || 'Unable to start camera.');
+      }
+    }
+  };
+
   // Launch in-browser live webcam capture
   const handleStartCamera = async () => {
     setCameraError('');
     setIsCameraActive(false);
     try {
       const stream = await getCameraStream();
+      setPermissionStatus('granted');
       cameraStreamRef.current = stream;
       setCameraStream(stream);
       setIsCameraActive(true);
@@ -112,12 +163,13 @@ export default function ChangeAvatarModal({
     } catch (err: any) {
       console.warn('Camera access issue:', err);
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setPermissionStatus('denied');
         setCameraError(
-          'Camera permission was denied. Please allow camera permissions in your browser or device settings, or upload a photo from your gallery.'
+          'Camera permission was denied. You can still use "Choose from Photos" or "Browse Storage" below, or allow Camera in device settings.'
         );
       } else {
         setCameraError(
-          err.message || 'Unable to access device camera. Please use the device photo picker.'
+          err.message || 'Unable to access device camera. Please use your device Photo app.'
         );
       }
     }
@@ -145,14 +197,14 @@ export default function ChangeAvatarModal({
 
       setSelectedPreview(dataUrl);
       handleStopCamera();
-      setActiveTab('upload');
+      setActiveTab('device');
     } catch (err) {
       console.error('Error capturing snapshot:', err);
-      setErrorMessage('Could not capture photo. Try uploading from your files.');
+      setErrorMessage('Could not capture photo. Try choosing from your photo gallery.');
     }
   };
 
-  // Handle file chosen from device picker (Gallery, Files, Photos)
+  // Handle file chosen from local device apps (Gallery, Photos, Files)
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -163,13 +215,12 @@ export default function ChangeAvatarModal({
       // Compress and optimize for web & mobile
       const compressedDataUrl = await compressImage(file, 800, 800, 0.88);
       setSelectedPreview(compressedDataUrl);
-      setActiveTab('upload');
+      setActiveTab('device');
     } catch (err: any) {
       console.error('Image processing failed:', err);
       setErrorMessage(err.message || 'Failed to process selected image file.');
     } finally {
       setIsProcessing(false);
-      // Reset input value so same file can be re-selected if needed
       e.target.value = '';
     }
   };
@@ -202,7 +253,6 @@ export default function ChangeAvatarModal({
       }
     } catch (err) {
       console.error('Save avatar network error:', err);
-      // Fallback: update local store anyway so UX is seamless
       updateUser({ avatar: selectedPreview });
       onAvatarUpdated?.(selectedPreview);
       onClose();
@@ -216,18 +266,45 @@ export default function ChangeAvatarModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden border border-gray-100 flex flex-col max-h-[92vh]"
+        className="bg-white rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden border border-gray-100 flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
+        {/* Hidden inputs to trigger local device apps */}
+        {/* 1. Native Photos / Gallery App */}
+        <input
+          ref={galleryInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+        {/* 2. Native Camera App (Mobile direct camera launch) */}
+        <input
+          ref={mobileCameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="user"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+        {/* 3. Device Storage / File Manager */}
+        <input
+          ref={fileStorageInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+
+        {/* Modal Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 sticky top-0 bg-white z-10">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-50 text-[#1769FF] rounded-xl">
-              <Camera size={20} />
+            <div className="p-2.5 bg-blue-50 text-[#1769FF] rounded-2xl shadow-xs">
+              <Camera size={22} />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-[#0A192F]">Update Profile Picture</h2>
-              <p className="text-xs text-gray-500">Supports all devices, cameras & photo galleries</p>
+              <h2 className="text-lg font-bold text-[#0A192F]">Change Profile Picture</h2>
+              <p className="text-xs text-gray-500">Pick from device apps, camera, or gallery</p>
             </div>
           </div>
           <button
@@ -236,13 +313,14 @@ export default function ChangeAvatarModal({
               handleStopCamera();
               onClose();
             }}
+            aria-label="Close"
             className="p-2 hover:bg-gray-100 rounded-full text-gray-500 hover:text-black transition-colors"
           >
             <X size={20} />
           </button>
         </div>
 
-        {/* Success Banner */}
+        {/* Success Alert */}
         {successToast && (
           <div className="bg-emerald-50 border-b border-emerald-200 text-emerald-800 px-4 py-2.5 text-xs font-semibold flex items-center justify-center gap-2">
             <Check size={16} className="text-emerald-600" />
@@ -250,7 +328,7 @@ export default function ChangeAvatarModal({
           </div>
         )}
 
-        {/* Error Banner */}
+        {/* Error Alert */}
         {errorMessage && (
           <div className="bg-red-50 border-b border-red-200 text-red-700 px-4 py-2 text-xs flex items-center gap-2">
             <AlertCircle size={15} />
@@ -258,18 +336,21 @@ export default function ChangeAvatarModal({
           </div>
         )}
 
-        {/* Body */}
-        <div className="overflow-y-auto p-5 flex-1">
+        {/* Scrollable Body */}
+        <div className="overflow-y-auto p-5 flex-1 space-y-5">
           {/* Main Avatar Preview */}
-          <div className="flex flex-col items-center justify-center mb-6">
+          <div className="flex flex-col items-center justify-center">
             <div className="relative group">
               <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-white shadow-xl ring-4 ring-[#1769FF]/20 bg-gray-100 flex items-center justify-center">
                 {isProcessing ? (
-                  <Loader2 size={32} className="text-[#1769FF] animate-spin" />
+                  <div className="flex flex-col items-center gap-1.5 text-xs text-[#1769FF]">
+                    <Loader2 size={28} className="animate-spin" />
+                    <span>Processing...</span>
+                  </div>
                 ) : (
                   <img
                     src={selectedPreview}
-                    alt="Avatar preview"
+                    alt="Selected Avatar preview"
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -279,47 +360,47 @@ export default function ChangeAvatarModal({
                   />
                 )}
               </div>
-              <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1 rounded-full border-2 border-white shadow-sm" title="Ready to update">
+              <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1 rounded-full border-2 border-white shadow-sm" title="Selected photo">
                 <Check size={14} />
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-2 font-medium">Selected profile photo</p>
+            <p className="text-xs text-gray-500 mt-2 font-medium">Selected profile picture preview</p>
           </div>
 
-          {/* Navigation Tabs */}
-          <div className="flex bg-gray-100 p-1 rounded-2xl mb-4 text-xs font-semibold">
+          {/* Source Tabs */}
+          <div className="flex bg-gray-100 p-1 rounded-2xl text-xs font-semibold">
             <button
               type="button"
               onClick={() => {
                 handleStopCamera();
-                setActiveTab('upload');
+                setActiveTab('device');
               }}
               className={clsx(
                 'flex-1 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5',
-                activeTab === 'upload'
+                activeTab === 'device'
                   ? 'bg-white text-[#1769FF] shadow-sm font-bold'
                   : 'text-gray-600 hover:text-black'
               )}
             >
-              <Upload size={14} />
-              <span>Upload / Gallery</span>
+              <Smartphone size={14} />
+              <span>Local Device Apps</span>
             </button>
 
             <button
               type="button"
               onClick={() => {
-                setActiveTab('camera');
+                setActiveTab('live-camera');
                 handleStartCamera();
               }}
               className={clsx(
                 'flex-1 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5',
-                activeTab === 'camera'
+                activeTab === 'live-camera'
                   ? 'bg-white text-[#1769FF] shadow-sm font-bold'
                   : 'text-gray-600 hover:text-black'
               )}
             >
               <Camera size={14} />
-              <span>Camera</span>
+              <span>Live Camera</span>
             </button>
 
             <button
@@ -353,111 +434,146 @@ export default function ChangeAvatarModal({
               )}
             >
               <ImageIcon size={14} />
-              <span>Link URL</span>
+              <span>URL</span>
             </button>
           </div>
 
-          {/* Tab 1: Upload / Device Picker */}
-          {activeTab === 'upload' && (
-            <div className="space-y-3">
-              {/* Hidden file inputs for cross-platform support */}
-              {/* Standard file picker for all devices (gallery, desktop, drive) */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileChange}
-              />
-              {/* Direct mobile camera prompt on mobile devices */}
-              <input
-                ref={mobileCameraInputRef}
-                type="file"
-                accept="image/*"
-                capture="user"
-                className="hidden"
-                onChange={handleFileChange}
-              />
-
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-gray-300 hover:border-[#1769FF] bg-gray-50 hover:bg-blue-50/40 rounded-2xl p-6 text-center cursor-pointer transition-all group"
-              >
-                <div className="w-12 h-12 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center mx-auto mb-3 text-[#1769FF] group-hover:scale-110 transition-transform">
-                  <Upload size={22} />
-                </div>
-                <h3 className="text-sm font-bold text-gray-800 mb-1">
-                  Choose from Device or Photo Library
-                </h3>
-                <p className="text-xs text-gray-500 max-w-xs mx-auto">
-                  Select any photo from your Android gallery, iOS camera roll, or desktop files (JPEG, PNG, WebP)
-                </p>
-                <button
-                  type="button"
-                  className="mt-3 px-4 py-1.5 bg-[#1769FF] text-white text-xs font-bold rounded-full shadow-sm group-hover:bg-blue-600 transition-colors"
-                >
-                  Browse Files
-                </button>
-              </div>
-
-              {/* Mobile Direct Camera Trigger button */}
-              <div className="flex gap-2">
+          {/* TAB 1: LOCAL DEVICE APPS (Photos, Camera, Storage) */}
+          {activeTab === 'device' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* 1. Camera App Option */}
                 <button
                   type="button"
                   onClick={() => mobileCameraInputRef.current?.click()}
-                  className="flex-1 py-2.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors sm:hidden"
+                  className="flex flex-col items-center justify-center p-4 bg-blue-50/70 hover:bg-blue-100/70 border border-blue-200/80 rounded-2xl text-center transition-all hover:scale-[1.02] active:scale-95 group cursor-pointer"
                 >
-                  <Smartphone size={15} className="text-[#1769FF]" />
-                  <span>Open Phone Camera</span>
+                  <div className="w-12 h-12 rounded-2xl bg-[#1769FF] text-white flex items-center justify-center shadow-md mb-2.5 group-hover:scale-110 transition-transform">
+                    <Camera size={22} />
+                  </div>
+                  <span className="text-sm font-bold text-[#0A192F] mb-1">Take Photo</span>
+                  <span className="text-[11px] text-gray-500 line-clamp-2">
+                    Opens your device camera app
+                  </span>
                 </button>
+
+                {/* 2. Photo Gallery App Option */}
                 <button
                   type="button"
-                  onClick={() => {
-                    setActiveTab('camera');
-                    handleStartCamera();
-                  }}
-                  className="flex-1 py-2.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+                  onClick={() => galleryInputRef.current?.click()}
+                  className="flex flex-col items-center justify-center p-4 bg-emerald-50/70 hover:bg-emerald-100/70 border border-emerald-200/80 rounded-2xl text-center transition-all hover:scale-[1.02] active:scale-95 group cursor-pointer"
                 >
-                  <Camera size={15} className="text-[#1769FF]" />
-                  <span>Live Webcam</span>
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md mb-2.5 group-hover:scale-110 transition-transform">
+                    <ImageIcon size={22} />
+                  </div>
+                  <span className="text-sm font-bold text-[#0A192F] mb-1">Photos / Gallery</span>
+                  <span className="text-[11px] text-gray-500 line-clamp-2">
+                    Google Photos, Apple Photos & Gallery
+                  </span>
+                </button>
+
+                {/* 3. Device Storage / File Manager Option */}
+                <button
+                  type="button"
+                  onClick={() => fileStorageInputRef.current?.click()}
+                  className="flex flex-col items-center justify-center p-4 bg-indigo-50/70 hover:bg-indigo-100/70 border border-indigo-200/80 rounded-2xl text-center transition-all hover:scale-[1.02] active:scale-95 group cursor-pointer"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md mb-2.5 group-hover:scale-110 transition-transform">
+                    <FolderOpen size={22} />
+                  </div>
+                  <span className="text-sm font-bold text-[#0A192F] mb-1">Browse Files</span>
+                  <span className="text-[11px] text-gray-500 line-clamp-2">
+                    Internal storage, Downloads, or SD Card
+                  </span>
                 </button>
               </div>
 
-              {/* Permissions & Security Badge */}
-              <div className="flex items-center gap-2 text-[11px] text-gray-500 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
-                <ShieldCheck size={16} className="text-emerald-600 shrink-0" />
-                <span>
-                  Permissions granted across all devices. Photos are compressed locally on your device for fast, secure delivery.
-                </span>
+              {/* Local Device Permissions Status Card */}
+              <div className="bg-gray-50 border border-gray-200/80 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={18} className="text-[#1769FF]" />
+                    <span className="text-xs font-bold text-[#0A192F] uppercase tracking-wide">
+                      Device App Permissions
+                    </span>
+                  </div>
+                  <span className="text-[11px] px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full font-bold">
+                    Active
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <div className="flex items-center justify-between p-2 bg-white rounded-xl border border-gray-100">
+                    <span className="text-gray-600 flex items-center gap-1.5">
+                      <Camera size={14} className="text-[#1769FF]" />
+                      <span>Camera Access:</span>
+                    </span>
+                    <span className="font-semibold text-emerald-600 flex items-center gap-1">
+                      <CheckCircle2 size={13} />
+                      {permissionStatus === 'denied' ? 'Denied' : 'Enabled'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2 bg-white rounded-xl border border-gray-100">
+                    <span className="text-gray-600 flex items-center gap-1.5">
+                      <ImageIcon size={14} className="text-emerald-600" />
+                      <span>Photo Gallery:</span>
+                    </span>
+                    <span className="font-semibold text-emerald-600 flex items-center gap-1">
+                      <CheckCircle2 size={13} />
+                      Allowed
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-[11px] text-gray-500 leading-relaxed flex items-start gap-1.5">
+                  <HelpCircle size={14} className="shrink-0 text-gray-400 mt-0.5" />
+                  <span>
+                    When you tap <strong>Take Photo</strong> or <strong>Photos / Gallery</strong>, your device will display its native permission prompt. Grant permission to access your local photos or camera.
+                  </span>
+                </div>
+
+                {permissionStatus === 'denied' && (
+                  <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-800 flex items-center justify-between">
+                    <span>Camera is currently blocked in browser settings.</span>
+                    <button
+                      type="button"
+                      onClick={handleRequestCameraPermission}
+                      className="px-2.5 py-1 bg-amber-600 text-white rounded-lg font-bold text-[11px]"
+                    >
+                      Request Again
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          {/* Tab 2: Live Camera Capture */}
-          {activeTab === 'camera' && (
+          {/* TAB 2: LIVE IN-BROWSER CAMERA */}
+          {activeTab === 'live-camera' && (
             <div className="space-y-3">
               {cameraError ? (
-                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-amber-800 text-xs">
-                  <div className="flex items-center gap-2 font-bold mb-1">
+                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-amber-800 text-xs space-y-2">
+                  <div className="flex items-center gap-2 font-bold">
                     <AlertCircle size={16} className="text-amber-600" />
-                    <span>Camera Permission Needed</span>
+                    <span>Camera Permission Required</span>
                   </div>
-                  <p className="mb-3">{cameraError}</p>
-                  <div className="flex gap-2">
+                  <p>{cameraError}</p>
+                  <div className="flex flex-wrap gap-2 pt-1">
                     <button
                       type="button"
-                      onClick={handleStartCamera}
-                      className="px-3 py-1.5 bg-amber-600 text-white rounded-lg font-bold flex items-center gap-1.5 text-xs hover:bg-amber-700 transition-colors"
+                      onClick={handleRequestCameraPermission}
+                      className="px-3 py-1.5 bg-amber-600 text-white rounded-xl font-bold flex items-center gap-1.5 text-xs hover:bg-amber-700 transition-colors"
                     >
                       <RefreshCw size={13} />
-                      Retry Camera
+                      Grant Permission & Retry
                     </button>
                     <button
                       type="button"
                       onClick={() => mobileCameraInputRef.current?.click()}
-                      className="px-3 py-1.5 bg-white border border-amber-300 text-amber-900 rounded-lg font-bold text-xs"
+                      className="px-3 py-1.5 bg-white border border-amber-300 text-amber-900 rounded-xl font-bold text-xs"
                     >
-                      Use Native Mobile Camera
+                      Open Phone Camera App
                     </button>
                   </div>
                 </div>
@@ -482,11 +598,11 @@ export default function ChangeAvatarModal({
                     <button
                       type="button"
                       onClick={handleCaptureSnapshot}
-                      className="w-14 h-14 rounded-full bg-white hover:bg-gray-100 p-1 flex items-center justify-center shadow-lg transition-transform hover:scale-105 active:scale-95"
+                      className="w-14 h-14 rounded-full bg-white hover:bg-gray-100 p-1 flex items-center justify-center shadow-lg transition-transform hover:scale-105 active:scale-95 cursor-pointer"
                       title="Snap photo"
                     >
-                      <div className="w-11 h-11 rounded-full border-2 border-gray-900 bg-white flex items-center justify-center">
-                        <Camera size={20} className="text-[#1769FF]" />
+                      <div className="w-11 h-11 rounded-full border-2 border-[#0A192F] bg-white flex items-center justify-center">
+                        <Camera size={22} className="text-[#1769FF]" />
                       </div>
                     </button>
                   </div>
@@ -494,16 +610,16 @@ export default function ChangeAvatarModal({
               )}
 
               <p className="text-[11px] text-gray-500 text-center">
-                Position your face inside the circle and click the camera shutter to take your picture.
+                Look into your camera and tap the shutter button to take your profile picture.
               </p>
             </div>
           )}
 
-          {/* Tab 3: Curated Presets */}
+          {/* TAB 3: PRESET AVATARS */}
           {activeTab === 'presets' && (
             <div>
               <p className="text-xs text-gray-500 mb-3 font-medium">
-                Choose a verified avatar from our modern minimalist collection:
+                Choose a verified avatar from our modern collection:
               </p>
               <div className="grid grid-cols-4 gap-3">
                 {PRESET_AVATARS.map((preset, idx) => (
@@ -512,7 +628,7 @@ export default function ChangeAvatarModal({
                     type="button"
                     onClick={() => setSelectedPreview(preset.url)}
                     className={clsx(
-                      'group relative rounded-2xl overflow-hidden aspect-square border-2 transition-all hover:scale-105',
+                      'group relative rounded-2xl overflow-hidden aspect-square border-2 transition-all hover:scale-105 cursor-pointer',
                       selectedPreview === preset.url
                         ? 'border-[#1769FF] ring-4 ring-[#1769FF]/20 shadow-md'
                         : 'border-transparent hover:border-gray-300'
@@ -537,7 +653,7 @@ export default function ChangeAvatarModal({
             </div>
           )}
 
-          {/* Tab 4: Direct URL */}
+          {/* TAB 4: EXTERNAL URL */}
           {activeTab === 'url' && (
             <div className="space-y-3">
               <p className="text-xs text-gray-500 font-medium">
@@ -547,7 +663,7 @@ export default function ChangeAvatarModal({
                 <input
                   ref={urlInputRef}
                   type="url"
-                  placeholder="https://example.com/photo.jpg"
+                  placeholder="https://example.com/my-photo.jpg"
                   defaultValue={selectedPreview.startsWith('http') ? selectedPreview : ''}
                   className="flex-1 px-3 py-2 text-xs border border-gray-300 rounded-xl focus:outline-none focus:border-[#1769FF]"
                 />
@@ -566,18 +682,18 @@ export default function ChangeAvatarModal({
           )}
         </div>
 
-        {/* Footer */}
+        {/* Modal Footer */}
         <div className="px-5 py-3.5 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
           <button
             type="button"
             onClick={() => {
               setSelectedPreview(
                 `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                  currentUser?.name || 'User'
+                  currentUser?.name || 'BellBird'
                 )}&background=1769FF&color=fff`
               );
             }}
-            className="text-xs text-gray-500 hover:text-red-600 flex items-center gap-1 font-semibold transition-colors"
+            className="text-xs text-gray-500 hover:text-red-600 flex items-center gap-1 font-semibold transition-colors cursor-pointer"
           >
             <Trash2 size={13} />
             <span>Reset to initials</span>
@@ -590,7 +706,7 @@ export default function ChangeAvatarModal({
                 handleStopCamera();
                 onClose();
               }}
-              className="px-4 py-2 text-xs font-bold text-gray-600 hover:text-black rounded-full hover:bg-gray-200/60 transition-colors"
+              className="px-4 py-2 text-xs font-bold text-gray-600 hover:text-black rounded-full hover:bg-gray-200/60 transition-colors cursor-pointer"
             >
               Cancel
             </button>
@@ -599,7 +715,7 @@ export default function ChangeAvatarModal({
               onClick={handleSaveAvatar}
               disabled={isSaving || isProcessing}
               className={clsx(
-                'px-6 py-2 rounded-full font-bold text-xs transition-all flex items-center gap-1.5 shadow-sm',
+                'px-6 py-2 rounded-full font-bold text-xs transition-all flex items-center gap-1.5 shadow-sm cursor-pointer',
                 isSaving || isProcessing
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-[#1769FF] hover:bg-blue-600 text-white active:scale-95'

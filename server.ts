@@ -26,6 +26,9 @@ if (process.env.GEMINI_API_KEY) {
 async function startServer() {
   const app = express();
 
+  // Support reverse proxies (Hostinger, Cloudflare, Nginx, Cloud Run)
+  app.set('trust proxy', 1);
+
   app.use(cors());
   app.use(express.json());
 

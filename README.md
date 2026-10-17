@@ -69,9 +69,11 @@ A production-oriented full-stack social media MVP.
    ```
 3. Open `http://localhost:3000` in your browser.
 
-## Deployment Steps
+## Deployment
+- **Hostinger Deployment**: See [DEPLOYMENT.md](./DEPLOYMENT.md) for full step-by-step instructions on deploying to Hostinger via GitHub (supports both Hostinger Node.js and static web hosting with automatic `.htaccess` SPA routing).
+- **GitHub Actions**: Automated CI/CD workflow is included in `.github/workflows/deploy.yml`.
 
-To deploy this application to a production environment (like Render, Heroku, or Google Cloud Run):
+To deploy this application to any production environment:
 
 1. **Build the client:**
    ```bash

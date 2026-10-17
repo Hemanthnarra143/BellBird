@@ -1,5 +1,5 @@
 {
-  "packageId": "com.bellbird.app",
+  "packageId": "com.bellbird.myapp",
   "host": "bellbird.app",
   "name": "BellBird - Social Network",
   "launcherName": "BellBird",
@@ -48,5 +48,9 @@
   "isChromeOSOnly": false,
   "isMetaQuest": false,
   "fullScopeUrl": "https://bellbird.app/",
+  "signing": {
+    "file": "./android/bellbird-release.keystore",
+    "alias": "bellbird"
+  },
   "generatorApp": "bubblewrap-cli"
 }

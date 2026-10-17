@@ -28,6 +28,7 @@ import PostCard, { Post } from '../components/PostCard';
 import PromotedAdCard, { PromotedAd, PROMOTED_ADS_DATABASE } from '../components/PromotedAdCard';
 import ProfileSettingsModal, { SettingsTab } from '../components/ProfileSettingsModal';
 import EditProfileModal from '../components/EditProfileModal';
+import ChangeAvatarModal from '../components/ChangeAvatarModal';
 import TranslationHeaderWidget from '../components/TranslationHeaderWidget';
 import clsx from 'clsx';
 
@@ -46,6 +47,7 @@ export default function Profile() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('account');
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isChangeAvatarOpen, setIsChangeAvatarOpen] = useState(false);
 
   // Bio Translation
   const { isRealtimeActive, targetLanguage, translateText } = useTranslationStore();
@@ -284,24 +286,42 @@ export default function Profile() {
         <div className="px-4 sm:px-6 relative">
           <div className="flex justify-between items-start">
             <div className="relative group">
-              <img
-                src={profile.avatar}
-                alt={profile.name}
-                referrerPolicy="no-referrer"
-                onError={(e) => {
-                  e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name)}&background=1769FF&color=fff`;
+              <div
+                onClick={() => {
+                  if (currentUser?.id === profile.id) {
+                    setIsChangeAvatarOpen(true);
+                  }
                 }}
-                className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white -mt-12 sm:-mt-16 bg-white object-cover shadow-sm"
-              />
+                className={clsx(
+                  'relative rounded-full -mt-12 sm:-mt-16',
+                  currentUser?.id === profile.id && 'cursor-pointer'
+                )}
+                title={currentUser?.id === profile.id ? 'Click to change profile picture' : undefined}
+              >
+                <img
+                  src={profile.avatar}
+                  alt={profile.name}
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name)}&background=1769FF&color=fff`;
+                  }}
+                  className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white bg-white object-cover shadow-sm transition-opacity group-hover:opacity-95"
+                />
+                {currentUser?.id === profile.id && (
+                  <div className="absolute inset-0 rounded-full bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                    <Camera size={24} className="drop-shadow" />
+                  </div>
+                )}
+              </div>
               {currentUser?.id === profile.id && (
                 <button
                   type="button"
-                  onClick={() => setIsEditProfileOpen(true)}
+                  onClick={() => setIsChangeAvatarOpen(true)}
                   aria-label="Edit avatar"
-                  className="absolute bottom-1 right-1 bg-[#1769FF] hover:bg-blue-600 text-white p-1.5 rounded-full border-2 border-white shadow-sm transition-transform hover:scale-110 cursor-pointer"
-                  title="Change avatar photo"
+                  className="absolute bottom-1 right-1 bg-[#1769FF] hover:bg-blue-600 text-white p-2 rounded-full border-2 border-white shadow-md transition-transform hover:scale-110 active:scale-95 cursor-pointer z-10"
+                  title="Change profile picture"
                 >
-                  <Camera size={14} />
+                  <Camera size={15} />
                 </button>
               )}
             </div>
@@ -517,6 +537,15 @@ export default function Profile() {
         onClose={() => setIsEditProfileOpen(false)}
         onSaved={(updated) => {
           setProfile((prev: any) => ({ ...prev, ...updated }));
+        }}
+      />
+
+      {/* Quick Change Avatar Modal (Camera & Device Gallery) */}
+      <ChangeAvatarModal
+        isOpen={isChangeAvatarOpen}
+        onClose={() => setIsChangeAvatarOpen(false)}
+        onAvatarUpdated={(newAvatarUrl) => {
+          setProfile((prev: any) => ({ ...prev, avatar: newAvatarUrl }));
         }}
       />
     </div>

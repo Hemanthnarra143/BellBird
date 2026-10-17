@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace 'com.bellbird.app'
+    namespace 'com.bellbird.myapp'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.bellbird.app"
+        applicationId "com.bellbird.myapp"
         minSdk 21
         targetSdk 34
         versionCode 1
@@ -18,14 +18,31 @@ android {
             hostName: "bellbird.app",
             defaultUrl: "https://bellbird.app",
             launcherName: "BellBird",
-            assetStatements: '[{ "relation": ["delegate_permission/common.handle_all_urls"], "target": {"namespace": "android_app", "package_name": "com.bellbird.app", "sha256_cert_fingerprints": ["00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00"]}}]'
+            assetStatements: '[{ "relation": ["delegate_permission/common.handle_all_urls"], "target": {"namespace": "android_app", "package_name": "com.bellbird.myapp", "sha256_cert_fingerprints": ["00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00"]}}]'
         ]
+    }
+
+    signingConfigs {
+        release {
+            if (project.hasProperty('RELEASE_STORE_FILE')) {
+                storeFile file(RELEASE_STORE_FILE)
+                storePassword RELEASE_STORE_PASSWORD
+                keyAlias RELEASE_KEY_ALIAS
+                keyPassword RELEASE_KEY_PASSWORD
+            } else if (file('../bellbird-release.keystore').exists()) {
+                storeFile file('../bellbird-release.keystore')
+                storePassword 'bellbird123'
+                keyAlias 'bellbird'
+                keyPassword 'bellbird123'
+            }
+        }
     }
 
     buildTypes {
         release {
-            minifyEnabled true
-            shrinkResources true
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }

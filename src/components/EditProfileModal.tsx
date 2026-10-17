@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   X,
   Camera,
+  Upload,
+  Smartphone,
   Image as ImageIcon,
   Check,
   Sparkles,
@@ -12,6 +14,7 @@ import {
   Palette,
 } from 'lucide-react';
 import { useAuthStore } from '../store/useStore';
+import { compressImage } from '../utils/imageUtils';
 import clsx from 'clsx';
 
 interface EditProfileModalProps {
@@ -62,8 +65,47 @@ export default function EditProfileModal({
   const [showCustomCoverUrl, setShowCustomCoverUrl] = useState(false);
   const [customAvatarInput, setCustomAvatarInput] = useState('');
   const [customCoverInput, setCustomCoverInput] = useState('');
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [successToast, setSuccessToast] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  const avatarFileInputRef = React.useRef<HTMLInputElement>(null);
+  const avatarCameraInputRef = React.useRef<HTMLInputElement>(null);
+  const coverFileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsProcessingImage(true);
+    setErrorMsg('');
+    try {
+      const compressed = await compressImage(file, 800, 800, 0.88);
+      setAvatar(compressed);
+      setShowAvatarPicker(false);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to process avatar image');
+    } finally {
+      setIsProcessingImage(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleCoverFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsProcessingImage(true);
+    setErrorMsg('');
+    try {
+      const compressed = await compressImage(file, 1500, 600, 0.85);
+      setCoverImage(compressed);
+      setShowCoverPicker(false);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to process banner image');
+    } finally {
+      setIsProcessingImage(false);
+      e.target.value = '';
+    }
+  };
 
   // Sync state with current user whenever modal opens
   useEffect(() => {
@@ -203,16 +245,34 @@ export default function EditProfileModal({
               <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors" />
             </div>
 
+            {/* Hidden file input for cover */}
+            <input
+              ref={coverFileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleCoverFile}
+            />
+
             {/* Change Cover Action Buttons */}
             <div className="absolute inset-0 flex items-center justify-center gap-3">
               <button
                 type="button"
-                onClick={() => setShowCoverPicker(!showCoverPicker)}
-                className="bg-black/60 hover:bg-black/80 text-white p-3 rounded-full backdrop-blur-md transition-transform hover:scale-110 active:scale-95 flex items-center gap-1.5 text-xs font-semibold px-4"
-                title="Change Cover Banner"
+                onClick={() => coverFileInputRef.current?.click()}
+                className="bg-black/60 hover:bg-black/80 text-white p-2.5 rounded-full backdrop-blur-md transition-transform hover:scale-105 active:scale-95 flex items-center gap-1.5 text-xs font-semibold px-4 cursor-pointer"
+                title="Upload Banner from Device"
               >
-                <Camera size={18} />
-                <span>Change Banner</span>
+                <Upload size={16} />
+                <span>Upload Banner</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCoverPicker(!showCoverPicker)}
+                className="bg-black/50 hover:bg-black/70 text-white p-2.5 rounded-full backdrop-blur-md transition-transform hover:scale-105 active:scale-95 flex items-center gap-1.5 text-xs font-semibold px-3"
+                title="Select Style Presets"
+              >
+                <Palette size={16} />
+                <span className="hidden sm:inline">Presets</span>
               </button>
             </div>
           </div>
@@ -290,6 +350,23 @@ export default function EditProfileModal({
 
           {/* Avatar and Info Section */}
           <div className="px-5 sm:px-6">
+            {/* Hidden file inputs for avatar */}
+            <input
+              ref={avatarFileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarFile}
+            />
+            <input
+              ref={avatarCameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="user"
+              className="hidden"
+              onChange={handleAvatarFile}
+            />
+
             <div className="flex justify-between items-end relative -mt-12 sm:-mt-14 mb-4">
               <div className="relative group">
                 <img
@@ -303,22 +380,32 @@ export default function EditProfileModal({
                 />
                 <button
                   type="button"
-                  onClick={() => setShowAvatarPicker(!showAvatarPicker)}
-                  className="absolute inset-0 m-auto w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm transition-transform hover:scale-110 active:scale-95"
-                  title="Change Avatar Photo"
+                  onClick={() => avatarFileInputRef.current?.click()}
+                  className="absolute inset-0 m-auto w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm transition-transform hover:scale-110 active:scale-95 cursor-pointer"
+                  title="Upload New Profile Photo"
                 >
                   <Camera size={20} />
                 </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setShowAvatarPicker(!showAvatarPicker)}
-                className="text-xs font-bold text-[#1769FF] hover:underline flex items-center gap-1 pb-2"
-              >
-                <Palette size={14} />
-                <span>Choose avatar</span>
-              </button>
+              <div className="flex items-center gap-2 pb-2">
+                <button
+                  type="button"
+                  onClick={() => avatarFileInputRef.current?.click()}
+                  className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-[#1769FF] rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+                >
+                  <Upload size={13} />
+                  <span>Upload Photo</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAvatarPicker(!showAvatarPicker)}
+                  className="text-xs font-bold text-gray-600 hover:text-[#1769FF] flex items-center gap-1 px-2 py-1.5"
+                >
+                  <Palette size={14} />
+                  <span>Presets</span>
+                </button>
+              </div>
             </div>
 
             {/* Avatar Picker Gallery */}

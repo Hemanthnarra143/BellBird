@@ -46,8 +46,8 @@ Use this if your Hostinger plan includes the **Node.js** feature (Business Web H
 3. Configure the Node.js settings:
    - **Node.js version**: `20.x` or `22.x`
    - **Application root**: `/` (or your chosen subfolder)
-   - **Application startup file**: `server.ts` (or `dist/server.js`)
-   - **Custom start script**: `npm start` or `npm run start:prod`
+   - **Application startup file**: `server.js` (Hostinger default) OR `server.ts` (Both are fully supported!)
+   - **Custom start script**: `npm start`
 4. Add **Environment Variables** in the Node.js panel:
    - `NODE_ENV`: `production`
    - `PORT`: (Hostinger default or `3000`)

@@ -8,9 +8,7 @@ module.exports = {
   apps: [
     {
       name: 'bellbird',
-      script: './server.ts',
-      interpreter: 'node',
-      interpreter_args: '--import tsx',
+      script: './server.js',
       instances: 'max',
       exec_mode: 'cluster',
       autorestart: true,

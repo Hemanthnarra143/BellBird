@@ -1,0 +1,6 @@
+<resources>
+    <color name="colorPrimary">#1769FF</color>
+    <color name="colorPrimaryDark">#0A192F</color>
+    <color name="colorAccent">#1769FF</color>
+    <color name="navigationColor">#0A192F</color>
+</resources>

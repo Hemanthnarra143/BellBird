@@ -1,0 +1,52 @@
+{
+  "packageId": "com.bellbird.app",
+  "host": "bellbird.app",
+  "name": "BellBird - Social Network",
+  "launcherName": "BellBird",
+  "display": "standalone",
+  "themeColor": "#1769FF",
+  "themeColorDark": "#0A192F",
+  "navigationColor": "#0A192F",
+  "navigationColorDark": "#0A192F",
+  "navigationDividerColor": "#1E293B",
+  "navigationDividerColorDark": "#1E293B",
+  "backgroundColor": "#0A192F",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "public/icons/icon-512.png",
+  "maskableIconUrl": "public/icons/icon-maskable-512.png",
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [
+    {
+      "name": "Feed",
+      "shortName": "Feed",
+      "url": "/",
+      "chosenIconUrl": "public/icons/icon-192.png"
+    },
+    {
+      "name": "Search",
+      "shortName": "Search",
+      "url": "/search",
+      "chosenIconUrl": "public/icons/icon-192.png"
+    }
+  ],
+  "webManifestUrl": "/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {
+    "locationDelegation": {
+      "enabled": true
+    },
+    "playBilling": {
+      "enabled": false
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://bellbird.app/",
+  "generatorApp": "bubblewrap-cli"
+}

@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#1769FF" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>BellBird</title>
     <meta name="description" content="A production-oriented full-stack social media MVP." />
     <meta property="og:title" content="BellBird" />
@@ -15,6 +20,15 @@
   <body class="bg-gray-50 text-gray-900 antialiased selection:bg-[#1769FF] selection:text-white pb-16 md:pb-0 min-h-screen">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch((err) => {
+            console.log('[SW] Registration failed:', err);
+          });
+        });
+      }
+    </script>
   </body>
 </html>
 

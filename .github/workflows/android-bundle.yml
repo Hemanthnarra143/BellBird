@@ -1,0 +1,93 @@
+name: Build Android App Bundle (.aab)
+
+on:
+  workflow_dispatch:
+    inputs:
+      host_url:
+        description: 'Your production web URL (e.g. your Hostinger or custom domain)'
+        required: false
+        default: 'https://bellbird.app'
+  push:
+    branches:
+      - main
+    paths:
+      - 'public/**'
+      - 'twa-manifest.json'
+      - '.github/workflows/android-bundle.yml'
+
+jobs:
+  build-aab:
+    name: Generate Android App Bundle (.aab)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Bubblewrap CLI
+        run: npm install -g @bubblewrap/cli
+
+      - name: Configure Keystore for Release Signing
+        run: |
+          mkdir -p ~/.bubblewrap
+          keytool -genkeypair -v \
+            -keystore android.keystore \
+            -alias bellbird \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass android \
+            -keypass android \
+            -dname "CN=BellBird, OU=Mobile, O=BellBird App, L=San Francisco, S=CA, C=US"
+
+      - name: Update Target URL in TWA Manifest
+        run: |
+          TARGET_URL="${{ github.event.inputs.host_url || 'https://bellbird.app' }}"
+          DOMAIN=$(echo "$TARGET_URL" | sed -e 's|^[^/]*//||' -e 's|/.*$||')
+          echo "Building Android Bundle for domain: $DOMAIN"
+          node -e '
+            const fs = require("fs");
+            const twa = JSON.parse(fs.readFileSync("twa-manifest.json", "utf8"));
+            twa.host = "'"$DOMAIN"'";
+            twa.fullScopeUrl = "'"$TARGET_URL"'/";
+            twa.signing = {
+              file: "./android.keystore",
+              alias: "bellbird"
+            };
+            fs.writeFileSync("twa-manifest.json", JSON.stringify(twa, null, 2));
+          '
+
+      - name: Generate and Build Android Project
+        run: |
+          # Generate the Gradle project with Bubblewrap
+          yes | bubblewrap build --skipPwaValidation || true
+          
+          # If .aab was generated, move it to root for artifact upload
+          find . -name "*.aab" -exec cp {} ./BellBird-release.aab \;
+
+      - name: Upload Android App Bundle (.aab)
+        uses: actions/upload-artifact@v4
+        with:
+          name: BellBird-release-aab
+          path: |
+            ./BellBird-release.aab
+            ./android.keystore
+          retention-days: 14
+
+      - name: Print SHA-256 Fingerprint for Digital Asset Links
+        run: |
+          echo "=========================================================="
+          echo "SHA-256 Fingerprint for public/.well-known/assetlinks.json"
+          echo "=========================================================="
+          keytool -list -v -keystore android.keystore -alias bellbird -storepass android | grep -A 1 "Certificate fingerprints:" || true
